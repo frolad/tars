@@ -1,0 +1,3 @@
+interface:
+  display_name: "STTP Software Coding"
+  short_description: "Smallest complete diff, reuse first, verified by running"

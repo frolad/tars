@@ -1,0 +1,208 @@
+{
+  "skill_name": "workshop-craft",
+  "evals": [
+    {
+      "id": 1,
+      "name": "start",
+      "prompt": "/workshop-craft Finance wants the monthly and admin sales reports as CSV and PDF downloads, for a new finance role only.",
+      "fixture": "base",
+      "expected_output": "Reads the repo first; says in one line that .blueprints is not ignored by git and changes nothing; round 1 confirms the intent (who gets the files and what for) as recommended answers; no detail question; no file written yet.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "Read the code under reports/ before replying",
+        "No blueprint file written before the task is confirmed",
+        "02-scope.md holds no section text",
+        "The reply says .blueprints is not ignored by git",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "Round 1 confirms the intent: a reading of the goal (who gets the files and what for) for the user to confirm",
+        "Round 1 has no detail question (CSV separator, PDF layout, columns, file names, URLs, the PDF library)",
+        "No question asks the user a fact the repo answers (the existing roles, views, how amounts are stored)"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "several-tasks",
+      "prompt": "/workshop-craft CSV and PDF exports for finance, move the sales data to SQLite, and replace the login with company SSO.",
+      "fixture": "base",
+      "expected_output": "Says the request is several tasks, before any detailed question, and asks which one to craft first, with a recommendation; writes nothing.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "No blueprint written",
+        "Says the request is several tasks before any detailed question",
+        "Asks which task to craft first, with a recommendation",
+        "No detail question about any of the tasks"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "short-path",
+      "prompt": "/workshop-craft the monthly page heading shows \"Sales 2026-8\"; make it \"Sales 2026-08\".",
+      "fixture": "base",
+      "expected_output": "Says the change fits in one session and leaves no decision to the user, and suggests running workshop-forge on the session instead of a blueprint; writes no blueprint and edits no code.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "No blueprint written",
+        "The reply mentions workshop-forge",
+        "Says the change fits one session and leaves nothing for the user to decide",
+        "Suggests running workshop-forge on the session instead of writing a blueprint"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "write-sections",
+      "fixture": "scope-started",
+      "prompt": "The conversation so far:\n\n[user] /workshop-craft Finance wants the monthly and admin sales reports as CSV and PDF downloads, for a new finance role only.\n\n[assistant]\nThis is an engineering task: two reports, two file formats and one access rule, all in `reports/`.\n\n❓ **Q1** - **Goal**: My reading: finance downloads the monthly sales report and the admin sales list as files for the month-end close. Today the monthly report is a page and a JSON view for any logged-in user (`reports/views.py:14`), and the sales list is a page for admins only (`reports/admin_views.py:5`). Right?\n\n➡️ yes; the README ties the monthly report to finance's month-end close.\n\n---\n\n❓ **Q2** - **Who downloads**: Only the new finance role, or finance and admins? Admins see the sales list today; with finance only, an admin sees the list but cannot download it.\n\n➡️ finance only, as the request says; admins keep the page.\n\n---\n\n❓ **Q3** - **What each file is for**: My reading: the CSV is for working with the numbers in Excel, and the PDF is a printable copy of the page, with the same rows and total, for the month-end file. Right?\n\n➡️ yes; it decides what goes into each file.\n\n[user] Q1: yes. Q2: finance and admins. Q3: yes\n\n[assistant]\nWritten: `.blueprints/finance-exports/00-knowledge.md`, with what the recon found and your three answers, and `02-scope.md` with its title. Next, what counts as done.\n\n❓ **Q4** - **Amounts in the files**: Each amount in the CSV and the PDF is the amount on its page, in euros with two decimals, as `format_eur` shows it today (`reports/money.py:1`). Right?\n\n➡️ yes; a file must never disagree with its page.\n\n---\n\n❓ **Q5** - **Everyone else**: A logged-in user without the finance or admin role gets no download, and keeps the monthly page and its JSON as today. Right?\n\n➡️ yes; that is what \"finance and admins\" leaves for everyone else.\n\n---\n\n❓ **Q6** - **Download links**: The monthly page and the sales list show the download links to finance and admins only, so nobody sees a link that fails for them. Right?\n\n➡️ yes.\n\n---\n\n❓ **Q7** - **Finance on the sales list page**: Today only admins can open the admin sales list (`reports/admin_views.py:5`). Its download links would sit on that page, where a finance user never gets. Finance opens the page too, through the same rule as the downloads? The files hold the same rows, so the page shows finance nothing new.\n\n➡️ yes; the links then reach everyone who may download.\n\n[user] Q4: yes, Q5: yes, Q6: yes, Q7: yes\n\nReply to the user's last message.",
+      "expected_output": "Writes Task, Goal and Done when to 02-scope.md with no question of their own, and names them in one line; writes no In scope or Out of scope yet; In scope and Out of scope are proposed as the text that would go into the file once nothing open changes them; new questions are numbered from Q8.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "02-scope.md holds Task, Goal and Done when, and no In scope or Out of scope",
+        "02-scope.md has a Current line",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "New questions take numbers after Q7",
+        "The reply names in one line the sections it wrote to the scope, and asks no approval of their text",
+        "In scope and Out of scope are not written before the user approves their text, and are proposed as the text that would go into the file, in this round or once an open question that changes them is answered",
+        "Done when covers the answers: the four downloads for finance and admins, amounts as on the page, no download for everyone else who keeps the page and its JSON, the links for finance and admins only",
+        "Current state, if written, comes from the code; it is not asked as a question"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "propose-split",
+      "fixture": "scope-approved",
+      "prompt": "The conversation so far:\n\n[assistant]\n(Rounds Q1 to Q12 are answered; In scope is approved, the other sections are written in `.blueprints/finance-exports/02-scope.md`, and the facts and decisions are in `00-knowledge.md`.)\n\nWritten to the scope: Constraints, Risks and Sources. You'll review them at the end. One section waits on you.\n\n❓ **Q13** - **Out of scope**:\n\n```\n- Giving people the finance role: roles come from the login, managed outside this repo. Decided by the user on 2026-09-30.\n- Downloads of any other page. Decided by the user on 2026-09-30.\n- Scheduled or emailed reports. Decided by the user on 2026-09-30.\n```\n\n➡️ approve as shown; each line is a decision from the rounds.\n\n[user] Q13: ok\n\nReply to the user's last message.",
+      "expected_output": "Writes Out of scope exactly as shown; self-checks the scope; proposes the split in one message: levels, pipelines with what each does and waits for, the order, the ways to cut with their costs and a recommendation, release points with what they hand over, categories, iteration size, and every Done when item written out in full with the pipelines that check it. Writes no work map or pipeline yet.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "No work map or pipeline written before the split is confirmed",
+        "Out of scope is written as approved, word for word",
+        "In scope is unchanged",
+        "Every Done when item is written out in full in the reply, next to the pipelines that check it",
+        "No question asks to approve the text of a scope section other than In scope and Out of scope",
+        "The split is proposed in one message, for the user to correct and confirm",
+        "It names the levels the task needs",
+        "Each pipeline has a few sentences on what it does and what it waits for, and the order follows from the waits",
+        "It offers the ways to cut (by concern, by page or surface, one pipeline) with a cost each, and a recommendation",
+        "Each release point says what it hands over",
+        "It gives the categories of each pipeline and an iteration size in words"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "write-split",
+      "fixture": "split-proposed",
+      "prompt": "The conversation so far:\n\n[assistant]\n(Rounds Q1 to Q13 are answered; In scope and Out of scope are approved, the other sections are written in `.blueprints/finance-exports/02-scope.md`, and the facts and decisions are in `00-knowledge.md`.)\n\nWritten: Out of scope, as approved. Every section of the scope is written. Self-check: no placeholders, no contradictions between sections, and each Done when item can be checked by a test or a click.\n\nThe split. Levels: the task, pipelines and categories; nothing deeper is needed yet.\n\n❓ **Q14** - **Pipelines**: three, cut by concern.\n\n1. Pipeline 1: CSV downloads (pipelines/01-csv-downloads/). The finance role and the rule that lets finance and admins through, the admin sales list page included, then the CSV download of the monthly report and of the sales list. Categories: Access, Monthly report, Sales list. Waits for: nothing. Done when: scope 1, 2, 3, 4, 5.\n2. Pipeline 2: PDF downloads (pipelines/02-pdf-downloads/). Choosing and adding the PDF library, then the PDF of each report, with the same rows and total as its page. Categories: Library, Monthly report, Sales list. Waits for: pipeline 1, Access, iteration 1.1 (release point). Hands over: the access rule for finance and admins, ready for the PDF views. Done when: scope 1, 2, 3, 4, 5.\n3. Pipeline 3: Download links (pipelines/03-download-links/). The links on the monthly page and on the sales list, shown to finance and admins only. Categories: Pages. Waits for: pipelines 1 and 2 to finish. Done when: scope 6.\n\nOrder: pipeline 1 first; pipeline 2 once pipeline 1, Access, iteration 1.1 is done; pipeline 3 once both are finished. Critical path: pipeline 1 up to Access, iteration 1.1, then pipeline 2, then pipeline 3.\n\nDone when, as written to the scope, and the pipelines that check each item:\n1. A finance user downloads the monthly report as CSV and as PDF. Pipelines 1 and 2.\n2. A finance user opens the admin sales list and downloads it as CSV and as PDF. Pipelines 1 and 2.\n3. An admin gets the same four downloads. Pipelines 1 and 2.\n4. A logged-in user without the finance or admin role gets no download, and keeps the monthly page and its JSON. Pipelines 1 and 2.\n5. Every amount in the files matches the amount on its page, in euros with two decimals. Pipelines 1 and 2.\n6. The monthly page and the sales list show the download links to finance and admins only. Pipeline 3.\n\n➡️ these three. The PDF library is the least known part, and this cut lets it start as soon as the access rule exists.\n\n---\n\n❓ **Q15** - **How to cut**: the ways to cut, and what each costs:\n\n1. By concern, as above: small pipelines with focused knowledge, and the PDF work runs next to the CSV work. Cost: two waits, and a work map to keep up.\n2. By page: one pipeline per report, each with its CSV, PDF and link. Matches how you would check it, report by report. Cost: the access rule and the PDF library land in the first pipeline and block the second.\n3. One pipeline for everything, with the categories Access, CSV, PDF and Links. No work map. Cost: nothing shows that the PDF work could run in parallel.\n\n➡️ 1, by concern.\n\n---\n\n❓ **Q16** - **Iteration size**: one download, one rule or one link per iteration, with its test.\n\n➡️ this size; each diff reads in a couple of minutes.\n\n[user] ok, go with it\n\nReply to the user's last message.",
+      "expected_output": "Writes 03-workmap.md and one pipeline file per pipeline in workshop-craft's formats, every iteration a PLANNED row in its status table and unclear work under Not yet clear; the scope keeps its Current line and gets no Confirmed on yet; the reply is the review: each written file with what it holds, the scope sections the user has not seen marked, and the user asked to read the files and reply OK or name what to change.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "03-workmap.md has Waits for, Hands over, an Order section and a Critical path",
+        "One pipeline file per pipeline, three pipelines",
+        "Each pipeline file has Goal, Done when: scope, Iteration size confirmed by the user on a date, Current and Iterations",
+        "Every iteration has a PLANNED or BLOCKED row in the status table",
+        "Pipeline 1 has a Releases line",
+        "An open decision is a Blocker naming the iteration it blocks, not a Not yet clear line",
+        "The scope keeps a Current line and has no Confirmed on before the user's OK",
+        "In scope and Out of scope are unchanged",
+        "The reply lists each file written, with its path and what it holds",
+        "The reply marks the scope sections the user has not seen in chat: every section but In scope, Out of scope and Done when, which the split proposal showed",
+        "The reply ends by asking the user to read the files and reply OK or name what to change, and asks nothing settled again",
+        "Each planned iteration is one sharp line of behaviour; work that cannot be stated sharply is under Not yet clear"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "from-session",
+      "fixture": "base",
+      "prompt": "The conversation so far:\n\n[user] finance keeps asking for the monthly report in Excel. what would it take to give them a CSV download?\n\n[assistant]\nNot much on the data side. The monthly report is `monthly_report` (`reports/views.py:14`), with a JSON twin, `monthly_report_json` (`reports/views.py:20`), built from the same rows by `monthly_sales` (`reports/queries.py:1`). `to_json` (`reports/export.py:6`) already formats amounts through `format_eur` (`reports/money.py:1`), so a CSV writer would sit next to it. There is no CSV code today. Both views only require a login (`reports/auth.py:12`); the roles are `staff` and `admin` (`reports/auth.py:1`), and a view can require one role only.\n\n❓ **Q1** - **Who gets the download**: any logged-in user, like the JSON, or a smaller group?\n\n➡️ finance and admins only, as the numbers go into the month-end close.\n\n---\n\n❓ **Q2** - **Formats**: CSV only, or a PDF too?\n\n➡️ CSV only for now; the repo has no dependencies, and a PDF needs a library.\n\n[user] Q1: finance and admins only. Q2: PDF too, they file a printable copy with the close\n\n[assistant]\nNoted: finance and admins only, CSV and PDF. That means a `finance` role, an access check that lets two roles through, and a PDF library as the repo's first dependency. One more: the admin sales list (`reports/admin_views.py:5`) is the other report finance asks about. Same downloads there?\n\n[user] yes, the sales list too. ok, this is bigger than I thought\n\n[user] /workshop-craft\n\nReply to the user's last message.",
+      "expected_output": "Takes the task from the session; maps the session's research and its three decisions (finance and admins only, CSV and PDF, the sales list too) onto workshop-craft's flow; the first round confirms that reading and says where the flow goes on, without asking those decisions again as open questions; one line that .blueprints is not ignored; writes nothing yet.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "No blueprint file written before the first round is answered",
+        "The reply says .blueprints is not ignored by git",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "Takes the task from the session: no question asks what the task is",
+        "The three session decisions are stated as decided, for the user to correct, not asked again as open questions with options",
+        "The first round confirms the reading of the session and says where workshop-craft's flow goes on next",
+        "Does not redo the session's research as questions: no question asks a fact the session already established"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "research-outside-git",
+      "fixture": "research",
+      "prompt": "/workshop-craft I need to research which PDF library our reports app should use. Compare the main options on licence, installing with pip only, table support and names in non-Latin scripts, and end with a recommendation the team can act on. The team notes are in notes.md.",
+      "expected_output": "Takes on the research task; outside a git repository, suggests a folder for the blueprint and asks before writing anything; the first round confirms the intent; no software-only scope section is forced on it.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "No file written in the folder",
+        "The reply suggests a folder for the blueprint",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "Takes on the research task: does not say workshop-craft is only for engineering work",
+        "Asks the user to confirm the suggested folder before writing the first file",
+        "The first round confirms the intent: what the recommendation is for and who acts on it"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "review-ok",
+      "fixture": "review",
+      "prompt": "The conversation so far:\n\n[assistant]\n(Rounds Q1 to Q16 are answered: In scope and Out of scope were approved in chat, and the split was confirmed.)\n\nThe blueprint is written in `.blueprints/finance-exports/`. Read the files and reply OK, or name what to change.\n\n- `02-scope.md`: In scope and Out of scope as you approved them. Not shown in chat before: Task, Current state, Goal, Done when, Approach, Constraints, Risks and Sources.\n- `00-knowledge.md`: 8 facts in 4 topics, and 6 decisions.\n- `03-workmap.md`: three pipelines; pipeline 2 starts once pipeline 1, Access, iteration 1.1 is done, and pipeline 3 once both are finished.\n- `pipelines/01-csv-downloads/iterations.md`: 3 planned iterations.\n- `pipelines/02-pdf-downloads/iterations.md`: 3 planned iterations.\n- `pipelines/03-download-links/iterations.md`: 2 planned iterations.\n\nThe self-check fixed nothing.\n\n[user] OK\n\nReply to the user's last message.",
+      "expected_output": "The scope gets Confirmed on with the date of the OK in place of its Current line, and nothing else changes; the last message names pipeline 1 as the one that can start, with /workshop-forge finance-exports, and does not start it; nothing is asked again.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The scope has Confirmed on: <date> in place of its Current line",
+        "No other blueprint file changed",
+        "The scope's sections are unchanged",
+        "The last message gives /workshop-forge finance-exports",
+        "The last message names the pipeline that can start and leaves starting workshop-forge to the user",
+        "Asks nothing again: no question about a section or a decision already settled"
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "first-files",
+      "fixture": "ignored",
+      "prompt": "The conversation so far:\n\n[user] /workshop-craft Finance wants the monthly and admin sales reports as CSV and PDF downloads, for a new finance role only.\n\n[assistant]\nThis is an engineering task: two reports, two file formats and one access rule, all in `reports/`.\n\n❓ **Q1** - **Goal**: My reading: finance downloads the monthly sales report and the admin sales list as files for the month-end close. Today the monthly report is a page and a JSON view for any logged-in user (`reports/views.py:14`), and the sales list is a page for admins only (`reports/admin_views.py:5`). Right?\n\n➡️ yes; the README ties the monthly report to finance's month-end close.\n\n---\n\n❓ **Q2** - **Who downloads**: Only the new finance role, or finance and admins? Admins see the sales list today; with finance only, an admin sees the list but cannot download it.\n\n➡️ finance only, as the request says; admins keep the page.\n\n---\n\n❓ **Q3** - **What each file is for**: My reading: the CSV is for working with the numbers in Excel, and the PDF is a printable copy of the page, with the same rows and total, for the month-end file. Right?\n\n➡️ yes; it decides what goes into each file.\n\n[user] Q1: yes, Nordwind GmbH's auditor asked for these files at the last close. Q2: finance and admins. Q3: yes, and I checked the page's numbers against /home/dana/Downloads/august.csv, they match.\n\nReply to the user's last message.",
+      "expected_output": "Round 1 confirms the task, so the blueprint's first files are written, 00-knowledge.md and 02-scope.md, and nothing outside the blueprint: workshop-craft writes no TARS Blueprint Record. The reply goes on with the next round, numbered from Q4.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The blueprint's first files are written: 00-knowledge.md and 02-scope.md",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "New questions take numbers after Q3",
+        "The reply goes on with the next round of the scope instead of stopping at the files"
+      ],
+      "files": []
+    }
+  ]
+}

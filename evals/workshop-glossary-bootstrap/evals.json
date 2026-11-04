@@ -1,0 +1,92 @@
+{
+  "skill_name": "workshop-glossary-bootstrap",
+  "evals": [
+    {
+      "id": 1,
+      "name": "plan-three-areas",
+      "fixture": "bare",
+      "prompt": "/workshop-glossary-bootstrap",
+      "expected_output": "The plan only: the whole project as three areas (catalog, members, loans), the size (small), inline mining, the areas core-first with loans last, no existing glossary, where the files go, and the question to start. Nothing written, no term proposed yet.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "Nothing written: no file created or changed in the repo",
+        "workshop-glossary was loaded",
+        "The plan names the three areas: catalog, members and loans",
+        "The plan names where the glossary goes (docs/GLOSSARY.md)",
+        "States the size of the run, small or large",
+        "States how it is mined: inline, or by subagents per area",
+        "Orders the areas core-first: loans after catalog and members",
+        "Proposes no glossary entry yet: the turn is the plan",
+        "Ends with the question to start, the user's choices as numbered questions with a recommendation"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "first-proposal",
+      "fixture": "bare",
+      "prompt": "The conversation so far:\n\n[user] /workshop-glossary-bootstrap\n\n[assistant]\nThe plan. Nothing is written until you confirm it.\n\nScope: the whole project, three areas:\n1. Catalog (`catalog/`, `templates/catalog/`): the tools, their categories, condition and deposit, kits, retiring a tool.\n2. Members (`members/`, `templates/members/`): joining, households, volunteers, the induction.\n3. Loans (`loans/`, `templates/loans/`): borrowing, due dates, holds, late fees.\n\nSize: small, about 400 lines; mined inline, one area at a time.\nOrder: Catalog, Members, Loans. Loans is built on the tools and the members, so it goes last.\nWhat exists: no glossary and no decision records.\nWhere it writes: `docs/GLOSSARY.md` and `docs/adrs/`, each created with the first entry you approve. The working file goes to `.blueprints/glossary-bootstrap/`, which git ignores.\n\n**Q1 - Scope**: the whole project, the three areas above?\n\nRecommended: yes; it is small enough for one run.\n\n---\n\n**Q2 - Order**: Catalog, Members, Loans?\n\nRecommended: yes, core first.\n\nStart with this plan?\n\n[user] Q1: yes. Q2: yes. Go.\n\nReply to the user's last message.",
+      "expected_output": "Creates the working file in .blueprints/glossary-bootstrap/ with a Current line, mines the catalog, and proposes its first group: at most 10 entries, all from the catalog, in workshop-glossary's format, with Tool carrying `_In the code_: Item`. The Tool/Item clash and the retired-tools surprise are numbered questions continuing from Q3, each with a recommendation; the surprise cites the 2025-03-14 commit's why. Nothing written under docs/.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "Nothing under docs/: no glossary or ADR written before an answer",
+        "No file outside .blueprints changed",
+        "The working file exists in .blueprints/glossary-bootstrap/ with a Current line",
+        "workshop-glossary was loaded",
+        "The proposal holds at most 10 entries",
+        "Every entry proposed is from the catalog: no member or loan term",
+        "The Tool entry carries `_In the code_: Item`",
+        "The Tool/Item clash is a numbered question with options and a recommendation",
+        "The retired-tools surprise is a numbered question that cites the commit's why (the insurer), with the ADR it would write",
+        "The questions are numbered on from the plan's Q1 and Q2",
+        "Ends waiting for the user's answer"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "approval-writes",
+      "fixture": "proposed",
+      "prompt": "The conversation so far:\n\n[user] /workshop-glossary-bootstrap\n\n[assistant]\nThe plan. Nothing is written until you confirm it.\n\nScope: the whole project, three areas:\n1. Catalog (`catalog/`, `templates/catalog/`): the tools, their categories, condition and deposit, kits, retiring a tool.\n2. Members (`members/`, `templates/members/`): joining, households, volunteers, the induction.\n3. Loans (`loans/`, `templates/loans/`): borrowing, due dates, holds, late fees.\n\nSize: small, about 400 lines; mined inline, one area at a time.\nOrder: Catalog, Members, Loans. Loans is built on the tools and the members, so it goes last.\nWhat exists: no glossary and no decision records.\nWhere it writes: `docs/GLOSSARY.md` and `docs/adrs/`, each created with the first entry you approve. The working file goes to `.blueprints/glossary-bootstrap/`, which git ignores.\n\n**Q1 - Scope**: the whole project, the three areas above?\n\nRecommended: yes; it is small enough for one run.\n\n---\n\n**Q2 - Order**: Catalog, Members, Loans?\n\nRecommended: yes, core first.\n\nStart with this plan?\n\n[user] Q1: yes. Q2: yes. Go.\n\n[assistant]\nCatalog, group 1 of 1: seven terms for `docs/GLOSSARY.md`, which is created with the first entry you approve.\n\n1. **Tool**: anything the library lends, such as a drill, a ladder or a tile cutter.\n   _Avoid_: item, equipment\n   _In the code_: Item\n2. **Category**: the group a tool is listed under when members browse, such as Garden or Woodwork.\n3. **Condition**: how worn a tool is: Good, Fair or Worn.\n4. **Deposit**: the money a member leaves when picking up a tool, paid back when the tool comes back undamaged.\n5. **Power tool**: a tool that runs on mains or a battery; only members who have had the induction may borrow one.\n6. **Kit**: a set of tools lent together, such as a tiling kit; every tool of the kit goes out and comes back together.\n7. **Retired tool**: a tool taken out of lending for good; it stays on record with its loans.\n   _Avoid_: removed tool, deleted tool\n\n**Q3 - Tool or item**: every page says \"tool\" (Browse tools, Add a tool, Retire tool); the code calls it `Item` (catalog/models.py:19). Options: 1) Tool, with `_In the code_: Item`, as entry 1 shows; 2) Item.\n\nRecommended: 1, the word members and volunteers see.\n\n---\n\n**Q4 - Why tools are retired, never deleted**: \"Retire tool\" only marks the tool (catalog/store.py:13), and nothing in the app deletes one. The commit that replaced deleting with retiring, on 2025-03-14, says why: \"The insurer asks for the loan history of every tool for six years, and a deleted tool takes its loans with it.\" As an ADR, `docs/adrs/catalog-tools-retired-not-deleted.md`:\n\n```\n# Tools are retired, never deleted\n\nWhy: the insurer asks for the loan history of every tool for six years, and deleting a tool would take its loans with it.\nRules out: deleting a tool, or its loans, from the app.\nKnown cost: retired tools stay in the data, and every list of tools has to leave them out.\nDecided by the team on 2025-03-14.\nConfirmed by the user on 2026-10-01.\n```\n\nOptions: 1) write it as shown; 2) the reason is different: tell me which; 3) nobody knows the reason any more: drop it.\n\nRecommended: 1, if the insurer's rule still holds.\n\nAnswer the entries in one line, such as \"yes, except 5: …\", and the questions by number.\n\n[user] yes, except 5: drop it, the induction rule goes away next month. Q3: 1. Q4: 1.\n\nReply to the user's last message.",
+      "expected_output": "Writes docs/GLOSSARY.md with entries 1-4, 6 and 7 as shown (Tool with `_In the code_: Item`), without Power tool; writes the ADR as shown, decided by the team on 2025-03-14 and confirmed on 2026-10-01; moves the working file on to Members (catalog done, Item noted as a rename candidate); mines the members and proposes their first group, its questions numbered from Q5. Commits nothing.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "The tests pass",
+        "No file outside .blueprints and docs/ changed",
+        "docs/GLOSSARY.md has Tool, Category, Condition, Deposit, Kit and Retired tool, and no Power tool",
+        "The Tool entry carries `_In the code_: Item`",
+        "The entries are in workshop-glossary's format: the bold term, a colon and its meaning on one line",
+        "The ADR is written as shown: decided by the team on 2025-03-14, confirmed by the user on 2026-10-01",
+        "No member or loan term written to the glossary yet",
+        "The working file's Current line moved on to Members",
+        "The working file keeps Tool's code name Item as a rename candidate",
+        "The reply proposes the members' first group, at most 10 entries",
+        "The new questions are numbered from Q5",
+        "Does not commit or offer to commit",
+        "Every `_In the code_` line of the members' proposal names a thing (Account), not a flag such as is_staff"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "context-md",
+      "fixture": "context",
+      "prompt": "The conversation so far:\n\n[user] /workshop-glossary-bootstrap\n\n[assistant]\nThe plan. Nothing is written until you confirm it.\n\nScope: the whole project, three areas:\n1. Catalog (`catalog/`, `templates/catalog/`): the tools, their categories, condition and deposit, kits, retiring a tool.\n2. Members (`members/`, `templates/members/`): joining, households, volunteers, the induction.\n3. Loans (`loans/`, `templates/loans/`): borrowing, due dates, holds, late fees.\n\nSize: small, about 400 lines; mined inline, one area at a time.\nOrder: Catalog, Members, Loans. Loans is built on the tools and the members, so it goes last.\nWhat exists: `CONTEXT.md` at the root, a glossary in its own format: the term in bold on one line, its meaning on the next, `_Avoid_` under it. Its four entries (Tool, Deposit, Condition, Member) stand, and only what is missing is mined. No decision records.\nWhere it writes: new terms into `CONTEXT.md`, in its format; ADRs to `docs/adrs/`, created with the first one you approve. The working file goes to `.blueprints/glossary-bootstrap/`, which git ignores.\n\n**Q1 - Scope**: the whole project, the three areas above?\n\nRecommended: yes; it is small enough for one run.\n\n---\n\n**Q2 - Order**: Catalog, Members, Loans?\n\nRecommended: yes, core first.\n\nStart with this plan?\n\n[user] Q1: yes. Q2: yes. Go.\n\n[assistant]\nCatalog, group 1 of 1: four new terms and one change, for `CONTEXT.md`, in its format. Its Tool and Deposit stand.\n\n1. New:\n   **Category**:\n   The group a tool is listed under when members browse, such as Garden or Woodwork.\n2. New:\n   **Power tool**:\n   A tool that runs on mains or a battery; only members who have had the induction may borrow one.\n3. New:\n   **Kit**:\n   A set of tools lent together, such as a tiling kit; every tool of the kit goes out and comes back together.\n4. New:\n   **Retired tool**:\n   A tool taken out of lending for good; it stays on record with its loans.\n   _Avoid_: removed tool, deleted tool\n5. Change: the code and the Add a tool form have three grades, Good, Fair and Worn (catalog/models.py:3).\n   **Condition**:\n   How worn a tool is: Good, Fair or Worn.\n   It replaces \"How worn a tool is: Good or Worn.\"\n\n**Q3 - Tool in the code**: the code calls a tool `Item` (catalog/models.py:19), which CONTEXT.md's Tool does not say. Options: 1) add `_In the code_: Item` under Tool's `_Avoid_` line; 2) leave Tool as it is.\n\nRecommended: 1: an agent reading CONTEXT.md cannot tell otherwise that `Item` is the tool.\n\n---\n\n**Q4 - Why tools are retired, never deleted**: \"Retire tool\" only marks the tool (catalog/store.py:13), and nothing in the app deletes one. The commit that replaced deleting with retiring, on 2025-03-14, says why: \"The insurer asks for the loan history of every tool for six years, and a deleted tool takes its loans with it.\" As an ADR, `docs/adrs/catalog-tools-retired-not-deleted.md`:\n\n```\n# Tools are retired, never deleted\n\nWhy: the insurer asks for the loan history of every tool for six years, and deleting a tool would take its loans with it.\nRules out: deleting a tool, or its loans, from the app.\nKnown cost: retired tools stay in the data, and every list of tools has to leave them out.\nDecided by the team on 2025-03-14.\nConfirmed by the user on 2026-10-01.\n```\n\nOptions: 1) write it as shown; 2) the reason is different: tell me which; 3) nobody knows the reason any more: drop it.\n\nRecommended: 1, if the insurer's rule still holds.\n\nAnswer the entries in one line, such as \"yes, except 2: …\", and the questions by number.\n\n[user] yes to all. Q3: 1. Q4: 1.\n\nReply to the user's last message.",
+      "expected_output": "Writes the four new terms into CONTEXT.md under Language, in its format (bold term line, meaning on the next line), replaces Condition in place, adds `_In the code_: Item` under Tool, keeps Deposit, Member and Relationships; writes the ADR in docs/adrs/; creates no docs/GLOSSARY.md. Then mines the members and proposes their first group in CONTEXT.md's format, without Member as a new term.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No file outside .blueprints, docs/ and CONTEXT.md changed",
+        "No docs/GLOSSARY.md: the glossary stays CONTEXT.md",
+        "CONTEXT.md has Category, Power tool, Kit and Retired tool, each in its format: the bold term on its own line, the meaning on the next",
+        "Condition is replaced in place: one entry, with Fair, the old text gone",
+        "Tool gains `_In the code_: Item`; Deposit, Member and the Relationships section are unchanged",
+        "The ADR is written in docs/adrs/: decided by the team on 2025-03-14, confirmed by the user on 2026-10-01",
+        "The working file's Current line moved on to Members",
+        "The members' proposal does not propose Member as a new term",
+        "The members' proposal shows its entries in CONTEXT.md's format",
+        "Every `_In the code_` line of the members' proposal names a thing (Account), not a flag such as is_staff"
+      ],
+      "files": []
+    }
+  ]
+}

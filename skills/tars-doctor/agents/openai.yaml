@@ -1,0 +1,6 @@
+interface:
+  display_name: "TARS Doctor"
+  short_description: "Check that STTP works in this session and is back on course"
+
+policy:
+  allow_implicit_invocation: false

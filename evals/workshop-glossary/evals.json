@@ -1,0 +1,172 @@
+{
+  "skill_name": "workshop-glossary",
+  "evals": [
+    {
+      "id": 1,
+      "name": "merge-at-pipeline-end",
+      "fixture": "merge",
+      "prompt": "/workshop-forge finance-exports 1",
+      "session_skills": [
+        {
+          "name": "code-review",
+          "description": "Review the current diff or a PR for bugs and cleanups. Built into Claude Code."
+        },
+        {
+          "name": "mattpocock-skills:code-review",
+          "description": "Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec)."
+        },
+        {
+          "name": "simplify",
+          "description": "Clean up the changed code without changing behavior."
+        }
+      ],
+      "expected_output": "Checks the Done when items, loads workshop-glossary and proposes, numbered and each as it will be written, the terms pipeline 1 built: the Sales list as a new term and the Finance user change. Leaves Printable copy and Download link in the blueprint, proposes no ADR for the split, the iteration size or where code goes, writes nothing before the user's answers, and ends the turn on the proposals, before the commit suggestion and the review.",
+      "files": [],
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "Nothing under docs/ changed but the TARS Blueprint Record",
+        "The tests pass",
+        "No file outside .blueprints changed",
+        "workshop-glossary was loaded",
+        "The blueprint's Terms are unchanged: nothing moved before the user's answer",
+        "The turn ends on the merge: no review skills listed yet",
+        "Proposes the Sales list term and the Finance user change, each as it will be written, numbered, for approval",
+        "Proposes no term of pipelines 2 and 3: Printable copy and Download link stay in the blueprint",
+        "Proposes no ADR for a decision about the task itself or for mechanics, and no proposed ADR names a function, a constant or a file path"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "craft-aligns-terms",
+      "fixture": "craft",
+      "prompt": "/workshop-craft Finance wants a yearly statement: every sale of the year, from all regions, as a page each finance user can open from the monthly report.",
+      "expected_output": "Reads the glossary in the recon and loads workshop-glossary. In the first round, raises that the glossary's Finance user sees only their own region while the task gives finance users every region, with a recommendation, and calls the new page a report in the glossary's words, or asks about the name. Writes nothing.",
+      "files": [],
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "Nothing under docs/ changed but the TARS Blueprint Record",
+        "No file written: no new blueprint file, nothing outside .blueprints changed",
+        "workshop-glossary was loaded",
+        "Raises in the first round that the glossary's Finance user sees their own region only while the task gives finance users every region, as a question with a recommendation",
+        "Uses the glossary's naming: calls the new page a report rather than a statement, or asks about the name with a recommendation"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "iteration-meets-glossary",
+      "fixture": "iteration",
+      "prompt": "/workshop-forge finance-exports 1",
+      "expected_output": "Runs the mini grill on the sales list CSV, reads the glossary and finds that its Finance user sees only their own region while the iteration gives finance every sale. Asks it in step 2 as a numbered question with a recommendation, writes no code, does not load workshop-glossary and does not edit docs/.",
+      "files": [],
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "Nothing under docs/ changed but the TARS Blueprint Record",
+        "No code written: nothing outside .blueprints changed while the question is open",
+        "workshop-glossary was not loaded",
+        "Current says the pipeline waits on the user",
+        "Asks, as a numbered question with a recommendation, about the glossary's Finance user seeing only their own region while the iteration gives finance every sale"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "direct-add-covered-term",
+      "fixture": "direct",
+      "prompt": "/workshop-glossary add \"order\": one purchase by a customer, the row the sales list shows",
+      "expected_output": "Reads the glossary first, says its Sale term already covers this and lists order as a word to avoid, and asks how to go on instead of adding the term. Writes nothing.",
+      "files": [],
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "Nothing under docs/ changed but the TARS Blueprint Record",
+        "No file outside .blueprints changed",
+        "The reply names the glossary's Sale term",
+        "Says Sale already covers it and that the glossary lists order as a word to avoid, and asks how to go on instead of adding the term"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "merge-approved",
+      "fixture": "merge-asked",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge finance-exports 1\n\n[assistant]\nPipeline 1, CSV downloads, has finished its iterations, and every Done when item it covers is met. All 18 tests pass.\n\n- Scope 1, finance downloads the monthly report as CSV: `monthly_report_csv` (reports/views.py:30), tests/test_views.py:22.\n- Scope 2, finance downloads the sales list as CSV: `all_sales_csv` (reports/admin_views.py:14), tests/test_admin_views.py:22.\n- Scope 3, admins get both CSVs: tests/test_views.py:26, tests/test_admin_views.py:27.\n- Scope 4, no CSV for staff: tests/test_views.py:30, tests/test_admin_views.py:31. The monthly page and its JSON still need only a login and have not changed since Base.\n- Scope 5, the CSV amounts match the page: tests/test_drift.py, which is also the check the scope's drift risk names.\n- Scope 7, finance opens the sales list and staff cannot: tests/test_admin_views.py:12, :16.\n\nGlossary merge: three entries for docs/. Each is approved on its own.\n\n1. New term, Sales list:\n```\n**Sales list**: the page of every sale, with its date, region, product, units and amount; finance and admins open it.\n_Avoid_: all sales page, sales table\n```\n\n2. Changed term, Finance user, as you decided on 2026-09-30:\n```\n**Finance user**: a user with the finance role; gets the report downloads and the sales list, for every region.\n```\nIt replaces `**Finance user**: a member of the finance team; sees the reports of their own region only.`\n\n3. ADR to delete: `docs/adrs/exports-json-only.md`, \"Reports are exported as JSON only\". The CSV downloads this pipeline built supersede it, as you decided on 2026-09-30.\n\nNo new ADR: none of the pipeline's decisions passes all three tests. Printable copy and Download link stay in the blueprint; pipelines 2 and 3 build them.\n\nAnswer by number. I'll then write the approved entries and remove them from the blueprint. After that come the commit and the review of everything since Base.\n\n[user] 1: yes, but without the _Avoid_ line. 2: yes. 3: yes.\n\nReply to the user's last message.",
+      "session_skills": [
+        {
+          "name": "code-review",
+          "description": "Review the current diff or a PR for bugs and cleanups. Built into Claude Code."
+        },
+        {
+          "name": "mattpocock-skills:code-review",
+          "description": "Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec)."
+        },
+        {
+          "name": "simplify",
+          "description": "Clean up the changed code without changing behavior."
+        }
+      ],
+      "expected_output": "Writes the approved entries exactly: Sales list without its _Avoid_ line, Finance user replaced in place with no amendment, the superseded ADR deleted; leaves the other entries and the money ADR alone; removes Sales list and Finance user from the blueprint's Terms and keeps Printable copy and Download link. Says in a line or two what was written, then goes on with the commit suggestion and the review list in the same turn. Commits nothing and does not offer to.",
+      "files": [],
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "The tests pass",
+        "No file outside .blueprints and docs/ changed",
+        "The glossary has the Sales list entry as approved, without an _Avoid_ line",
+        "Finance user is replaced in place: one entry, the new text, the old text gone, no date or amendment added",
+        "The glossary's other entries are unchanged",
+        "The superseded ADR is deleted and the money ADR is unchanged",
+        "The merged terms left the blueprint's Terms; Printable copy and Download link stay",
+        "The reply suggests a commit",
+        "Does not offer to commit for the user",
+        "The reply lists the review skills the session shows",
+        "Says in a line or two what was written and goes on with the commit and the review, without asking about the merge again"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "merge-skipped-no-glossary",
+      "fixture": "merge-bare",
+      "prompt": "/workshop-forge finance-exports 1",
+      "session_skills": [
+        {
+          "name": "code-review",
+          "description": "Review the current diff or a PR for bugs and cleanups. Built into Claude Code."
+        },
+        {
+          "name": "mattpocock-skills:code-review",
+          "description": "Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec)."
+        },
+        {
+          "name": "simplify",
+          "description": "Clean up the changed code without changing behavior."
+        }
+      ],
+      "expected_output": "The project has no glossary and no ADRs. Checks the Done when items, skips the merge without a word about a glossary or ADRs, does not load workshop-glossary, leaves the Terms in the blueprint and docs/ absent, and goes on in the same turn to the commit suggestion and the review skills.",
+      "files": [],
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "Nothing under docs/ changed but the TARS Blueprint Record",
+        "The tests pass",
+        "No file outside .blueprints changed",
+        "workshop-glossary was not loaded",
+        "The blueprint's Terms are unchanged",
+        "The reply says nothing about a glossary or ADRs",
+        "The reply suggests a commit",
+        "The reply lists the review skills the session shows"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "craft-maps-code-names",
+      "fixture": "craft-bare",
+      "prompt": "/workshop-craft Finance wants a yearly orders page: every order of the year from all regions, with its region, product, units and amount, which finance users open from the monthly report.",
+      "expected_output": "The project has no glossary and no ADRs. workshop-craft does the recon without loading workshop-glossary, writes nothing, suggests no glossary, and in its first round says the code calls an order a Sale and the pages say Sales, and asks which word the task uses, with a recommendation.",
+      "files": [],
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "Nothing under docs/ changed but the TARS Blueprint Record",
+        "No file written: no new blueprint file, nothing outside .blueprints changed",
+        "workshop-glossary was not loaded",
+        "Does not suggest building or creating a glossary",
+        "The reply names the code's Sale",
+        "Asks which word the task uses, order or sale, with a recommendation, since the code and the pages say sale"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "skill_name": "sttp-software-testing",
+  "evals": [
+    {
+      "id": 1,
+      "name": "new-write-path",
+      "prompt": "Add `rename_note(user, note_id, title)` to `NoteStore` in `notes/store.py`. The UI calls it when someone edits a note's title.",
+      "expected_output": "Red first: tests for rename, bad title, someone else's note, read back through get_note, then the code.",
+      "files": [],
+      "fixture": "new-write-path",
+      "assertions": [
+        "rename_note renames the owner's note",
+        "rename_note refuses another user's note and keeps its title",
+        "rename_note rejects an empty title",
+        "rename_note raises NotFound for a missing note",
+        "rename_note validates through the existing check_title",
+        "A new test renames a note and reads it back through get_note",
+        "A new test covers a bad title for rename_note",
+        "A new test covers renaming another user's note",
+        "All tests pass",
+        "Nothing new is staged",
+        "The new test was seen failing before the code passed it",
+        "The first red is an assertion failure, not an error",
+        "Slices one at a time: more than one red-green cycle",
+        "The report says what a red test failed with"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "prove-test-catches-bug",
+      "prompt": "`total()` in `shop/cart.py` double-counts discounts: a 100-cent discount takes 200 off. Fix it and show me the test would have caught it.",
+      "expected_output": "A discount test seen failing before the fix, named in the report; the user's work untouched; no git undo.",
+      "files": [],
+      "fixture": "prove-test-catches-bug",
+      "assertions": [
+        "total() applies each discount once and never goes below zero",
+        "All tests pass",
+        "A new test fails against the original total()",
+        "The report names the test that failed against the original total()",
+        "The user's unstaged work in cart.py and shipping.py is intact",
+        "The user's staged README.md change is still staged and nothing else is",
+        "No git stash, checkout, restore or reset was run",
+        "The new test was seen failing before the code passed it",
+        "The first red is an assertion failure, not an error",
+        "The report says what a red test failed with"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "new-seam",
+      "prompt": "`fetch_rates()` in `rates/client.py` fails the whole nightly job when the rates API drops a connection. Make it retry up to 3 times on connection errors.",
+      "expected_output": "No test crosses fetch_rates and the test needs a fake: ask how to test it before editing anything.",
+      "files": [],
+      "fixture": "new-seam",
+      "assertions": [
+        "Nothing is edited before the way to test it is agreed",
+        "The reply asks how the retry should be tested",
+        "The user's staged README.md change is still staged and nothing else is"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "STTP Mode"
+  short_description: "Show or set STTP mode: primary or full"
+
+policy:
+  allow_implicit_invocation: false

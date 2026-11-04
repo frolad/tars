@@ -1,0 +1,24 @@
+{
+  "name": "tars-mod",
+  "version": "0.7.0",
+  "description": "The TARS mod for Claude Code: the parts of TARS that run inside Claude Code. Optional; the tars plugin works without it.",
+  "author": {
+    "name": "frolad",
+    "url": "https://github.com/frolad"
+  },
+  "license": "MIT",
+  "userConfig": {
+    "statusLine": {
+      "type": "boolean",
+      "title": "Status line",
+      "description": "The STTP mode and the running pipeline under the prompt",
+      "default": true
+    },
+    "pipelinePane": {
+      "type": "boolean",
+      "title": "Pipeline pane",
+      "description": "The pipeline /workshop-forge runs, every iteration with its status, in a pane beside the chat",
+      "default": true
+    }
+  }
+}

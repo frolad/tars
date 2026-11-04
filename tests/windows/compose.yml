@@ -1,0 +1,27 @@
+# A Windows 11 VM for TARS's native Windows checks: docker compose -f tests/windows/compose.yml up -d
+# The screen is at http://127.0.0.1:8006, SSH at 127.0.0.1:2222 (user Docker, password admin), so both stay on
+# this machine. The checkout shows read-only as drive Z: inside.
+services:
+  windows:
+    image: dockurr/windows
+    container_name: tars-windows
+    environment:
+      VERSION: "11"
+      RAM_SIZE: "8G"
+      CPU_CORES: "4"
+    devices:
+      - /dev/kvm
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 127.0.0.1:8006:8006
+      - 127.0.0.1:2222:22
+    volumes:
+      - tars-windows:/storage
+      - ./oem:/oem
+      - ../..:/shared:ro
+    stop_grace_period: 2m
+
+volumes:
+  tars-windows:

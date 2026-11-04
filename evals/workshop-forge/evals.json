@@ -1,0 +1,289 @@
+{
+  "skill_name": "workshop-forge",
+  "evals": [
+    {
+      "id": 1,
+      "name": "pick-and-run",
+      "fixture": "ready",
+      "prompt": "/workshop-forge",
+      "expected_output": "Takes pipeline 1, the only one that can start, and names it in one line; the mini grill has nothing to ask; does Access, iteration 1.1 only, red then green; marks it done in iterations.md and moves Current on; reports the behaviour first with the red line, says pipeline 2 can start, describes Monthly report, iteration 2.1 with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "The access rule lets finance and admins through and refuses staff",
+        "Only Access, iteration 1.1 was done: no CSV code yet",
+        "Access, iteration 1.1 is done in iterations.md and Current moved on",
+        "The reply says pipeline 2 can start",
+        "Names the pipeline it picked in one line",
+        "The report leads with the behaviour change and gives the red line: the new test that failed and what it failed with",
+        "Ends with the next iteration in one or two sentences and the question to continue last, without starting it"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "grill-decision",
+      "fixture": "access-done",
+      "prompt": "/workshop-forge finance-exports 2",
+      "expected_output": "Runs pipeline 2; the mini grill for Library, iteration 1.1 finds the PDF library is a decision for the user (the repo's first dependency) and asks it in step 2, with options and a recommendation; edits no code and adds no dependency.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "No dependency file added",
+        "Asks the user to choose how the PDFs are made before any code",
+        "The options say what finance gets or what the servers need, not only package names",
+        "Gives a recommendation",
+        "Finds the facts itself: no PDF library is installed and the repo has no dependencies"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "continue",
+      "fixture": "access-done",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge finance-exports 1\n\n[assistant]\nPipeline 1, CSV downloads: Access, iteration 1.1 is done.\n\nA view can now let several roles through. `require_role(\"finance\", \"admin\")` admits a finance user or an admin and refuses everyone else with `Forbidden`, and `finance` is a known role. The sales list's `require_role(\"admin\")` works as before.\n\nRed first: `test_admin_passes_either_role` failed, an admin got `Forbidden` from `require_role(\"finance\", \"admin\")`.\n\nThis was the release point for pipeline 2, PDF downloads: it can start now, and it receives the access rule for finance and admins.\n\nNext, Monthly report, iteration 2.1: finance and admins download the monthly report as a CSV file, with the page's rows under a header row and amounts in euros with two decimals. Today the report is only a page and a JSON view. Continue?\n\n[user] continue\n\nReply to the user's last message.",
+      "expected_output": "Takes the continue as approval of Access, iteration 1.1 and runs Monthly report, iteration 2.1: the monthly CSV per the knowledge, red then green; marks it done and moves Current on; reports, describes Sales list, iteration 3.1 with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "The monthly CSV exists for finance and admins and refuses staff",
+        "The monthly CSV follows the knowledge: a header row, no total row, sales-2026-08.csv, sent as an attachment",
+        "Only Monthly report, iteration 2.1 was done: no sales list CSV",
+        "Monthly report, iteration 2.1 is done in iterations.md and Current moved on",
+        "The report leads with the behaviour change and gives the red line: the new test that failed and what it failed with",
+        "Ends with the next iteration in one or two sentences and the question to continue last, without starting it"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "breaking-point",
+      "fixture": "wrong-fact",
+      "prompt": "/workshop-forge finance-exports 1",
+      "expected_output": "Reads the sales list page and finds it has no total row, against the iteration line and the knowledge; stops before building the total, says what it found, corrects the fact, puts the decision to the user with options and a recommendation, and leaves Current waiting on the user. The tests stay green.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No sales list CSV with a total row was built",
+        "The wrong fact is corrected in the knowledge, or the reply names the contradiction",
+        "Current says the pipeline waits on the user",
+        "Stops before building the total and says what it found: the sales list page has no total row",
+        "Puts the decision to the user, with options in end-user terms and a recommendation, instead of picking one"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "reorganization",
+      "fixture": "inline-csv",
+      "prompt": "/workshop-forge finance-exports 1",
+      "expected_output": "Sees that the sales list CSV needs the CSV writer that lives inline in monthly_report_csv; makes the move to reports/export.py its own iteration (spawned before Sales list, iteration 3.1), proposed or done alone with no behaviour change, reported as moved, extracted and re-pointed files; the sales list CSV is not built in this turn.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No sales list CSV view was built",
+        "If code changed, it is a move only: the CSV writer in reports/export.py, views.py importing it, the same monthly CSV output, and no test assertion changed",
+        "The move is proposed or done as its own iteration, before the sales list CSV",
+        "If the move was done, the report lists each file as moved, extracted or re-pointed, and nothing else",
+        "Ends with the next iteration and the question to continue last"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "several-fixes",
+      "fixture": "csv-done",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, CSV downloads: Monthly report, iteration 2.1 is done.\n\nFinance and admins can download the monthly report as CSV: a header row, then one line per region and product with the units and the amount in euros with two decimals. Any other user gets `Forbidden`.\n\nRed first: `test_finance_gets_the_rows` failed with `AssertionError: 'North,Widget,3,12.34' not found in []`.\n\nNext, Sales list, iteration 3.1: finance and admins download the admin sales list as CSV, every sale the page shows. Today the sales list is only a page. Continue?\n\n[user] before we go on, the monthly CSV has three problems:\n1. the header says \"Amount\", it should say \"Amount (EUR)\" like the page\n2. the August file is called sales-2026-8.csv, it should be sales-2026-08.csv\n3. the browser opens the file instead of downloading it\n\nReply to the user's last message.",
+      "expected_output": "Lists the three problems as three iterations in order; fixes the first (the header) only, red then green; records the other two as iterations in iterations.md; reports, describes the next fix with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "Only the first problem is fixed: the header says Amount (EUR), the file name and the inline download are unchanged",
+        "iterations.md has the header fix as a done iteration and the other two problems as iterations",
+        "Lists the three problems as three iterations, in the user's order",
+        "Fixes only the first in this turn",
+        "Ends with the next fix described and the question to continue last"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "from-session",
+      "fixture": "base",
+      "prompt": "The conversation so far:\n\n[user] finance wants to look at one region at a time on the monthly report, Nordwind GmbH's auditor asked for it at the last close. can we filter it by region?\n\n[assistant]\nYes. Today `monthly_sales` (`reports/queries.py:1`) returns every region of the month, and both the page (`reports/views.py:14`) and the JSON view (`reports/views.py:20`) show all of them. Three things to settle:\n\n**Q1 - Matching**: region names are typed on each sale (`reports/models.py:7`). Should `north` match `North`?\n\nRecommended: yes, ignore case; the names are typed by people.\n\n---\n\n**Q2 - A region with no sales**: an empty table with a total of 0.00, or an error?\n\nRecommended: an empty table with 0.00; it is a valid question with an empty answer.\n\n---\n\n**Q3 - JSON too**: does the JSON view take the same filter?\n\nRecommended: yes, so the page and the JSON never disagree.\n\n[user] Q1 yes, Q2 empty table, I checked last month against /home/dana/Downloads/august.csv and a region can be empty, Q3 yes\n\n[assistant]\nAgreed:\n- An optional region filter on the monthly report, on the page and on the JSON view; without it both show every region, as today.\n- Region names match without regard to case.\n- A region with no sales that month gives an empty table and a total of 0.00.\n\n[user] /workshop-forge\n\nReply to the user's last message.",
+      "expected_output": "With no blueprint, creates the pipeline's knowledge.md and iterations.md under .blueprints/<slug>/pipelines/01-<name>/ from the conversation: PLANNED iterations in a status table, Done when as checkable lines, a suggested iteration size; writes the pipeline's file of the TARS Blueprint Record, docs/tars-reports/<slug>/01-<name>.md, without the auditor's company or the home path from the session; says in one line that .blueprints is not ignored by git; writes no scope and no work map; asks the user to confirm the iteration size before any code.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record, .gitignore included",
+        "iterations.md and knowledge.md exist under .blueprints/<slug>/pipelines/01-<name>/",
+        "Every iteration in iterations.md has a PLANNED row in the status table",
+        "Done when is written as checkable lines, not as scope numbers",
+        "iterations.md has an Iteration size line",
+        "No scope and no work map were written",
+        "The reply says .blueprints is not ignored by git",
+        "Asks the user to confirm the suggested iteration size before any code",
+        "The pipeline's record file is written, named like its folder: docs/tars-reports/<slug>/01-<name>.md",
+        "Nothing sensitive in the record: no customer name, no home path",
+        "The iterations cover the feature the session agreed, and nothing beyond it"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "research-from-session",
+      "fixture": "research",
+      "prompt": "The conversation so far:\n\n[user] we need to pick a PDF library for the reports app, see notes.md. can you help me plan the research?\n\n[assistant]\nYes. From `notes.md`: Python 3.12, servers install with pip only, and names come from several countries. I would compare three candidates, fpdf2, ReportLab and WeasyPrint, on four points: licence, installing with pip only, tables that run over several pages, and names in non-Latin scripts. The result is one notes file with a comparison table and a recommendation.\n\n**Q1 - Candidates**: these three, or others too?\n\nRecommended: these three; they are the usual choices installable with pip.\n\n---\n\n**Q2 - Depth**: read the docs and licences only, or also try each one in a scratch script?\n\nRecommended: try each one, with a two-page table holding a Polish and a Greek name, since that is where they differ.\n\n[user] Q1 these three. Q2 try each one\n\n[assistant]\nAgreed:\n- fpdf2, ReportLab and WeasyPrint;\n- their docs and licences, plus a scratch script per library that renders a two-page table with a Polish and a Greek name;\n- one notes file with a comparison table and a recommendation.\n\n[user] /workshop-forge\n\nReply to the user's last message.",
+      "expected_output": "Runs the research as a pipeline; outside a git repository, the first message suggests a folder, shows the first iterations and the size for the user to confirm, and writes nothing yet; each iteration names a check that fits research.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file written in the folder",
+        "The reply suggests a folder for the blueprint",
+        "Takes on the research work: does not say workshop-forge is only for code",
+        "Shows the first iterations and the suggested size, and asks the user to confirm them with the folder before writing anything",
+        "Each iteration names a check that fits research, such as a cited source or a script that renders, not a test suite or a build"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "end-of-pipeline",
+      "fixture": "pipeline-done",
+      "prompt": "/workshop-forge finance-exports 1",
+      "session_skills": [
+        "code-review: Review the current diff or a PR for bugs and cleanups. Built into Claude Code.",
+        "mattpocock-skills:code-review: Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec).",
+        "simplify: Clean up the changed code without changing behavior.",
+        "frontend-design: Create distinctive, production-grade frontend interfaces.",
+        "playground: Creates interactive HTML playgrounds."
+      ],
+      "expected_output": "Finds every iteration of pipeline 1 done. Checks the Done when items (scope 1 to 5 for the CSV files, and 7) against the code, each with where to see it. Suggests a commit, since the sales list iterations are uncommitted, and leaves it to the user. Guides the user to a review of everything since the Base commit: gives the range and what is not committed yet, lists the review skills the session has, numbered, recommends none, and waits for the user's pick. Writes the pipeline's file of the TARS Blueprint Record from the blueprint, since the checkout has none, with State built. Commits nothing, runs no review and changes no code.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "No review ran: no subagent was started",
+        "The reply suggests a commit",
+        "The reply names both review skills the session lists",
+        "Current says the pipeline waits on the user",
+        "The pipeline's record file says State built",
+        "Checks each Done when item against what was built, with where to see it",
+        "Lists the review skills numbered with no recommendation, and asks which one to run",
+        "Gives the current condition: the range from the Base commit and what is not committed yet"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "report-leaks",
+      "fixture": "csv-done",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, CSV downloads: Monthly report, iteration 2.1 is done.\n\nFinance and admins can download the monthly report as CSV: a header row, then one line per region and product with the units and the amount in euros with two decimals. Any other user gets `Forbidden`.\n\nRed first: `test_finance_gets_the_rows` failed with `AssertionError: 'North,Widget,3,12.34' not found in []`.\n\nNext, Sales list, iteration 3.1: finance and admins download the admin sales list as CSV, every sale the page shows. Today the sales list is only a page. Continue?\n\n[user] continue. two things for later: the empty sales list needs no test in this one, add it with the page for finance (your iteration 3.2). and in that page iteration, show me the access test before you write the view, I want to check the roles first.\n\nReply to the user's last message.",
+      "expected_output": "Runs Sales list, iteration 3.1 (the sales list CSV for finance and admins), red then green, with no empty-list test. Before the turn ends, both things the user left for later are in the blueprint's files, not only in the report: the empty-list test on Sales list, iteration 3.2 (or in postponed.md), and 'show the access test before writing the view' on that iteration. Reports, describes the next iteration with the question to continue, and stops.",
+      "files": [],
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "The sales list CSV exists for finance and admins and refuses staff",
+        "Sales list, iteration 3.1 is done in iterations.md and Current moved on",
+        "The empty-list test the user deferred is in a file, for a later iteration",
+        "The user's 'show me the access test first' is in a file, for the page iteration",
+        "Everything the report leaves for later or calls uncertain is also in a file",
+        "Ends with the next iteration described and the question to continue last"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "broken-helper",
+      "fixture": "broken-helper",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, CSV downloads: Monthly report, iteration 2.1 is done.\n\nFinance and admins can download the monthly report as CSV: a header row, then one line per region and product with the units and the amount in euros with two decimals. Any other user gets `Forbidden`.\n\nRed first: `test_finance_gets_the_rows` failed with `AssertionError: 'North,Widget,3,12.34' not found in []`.\n\nNext, Sales list, iteration 3.1: finance and admins download the admin sales list as CSV, every sale the page shows. Today the sales list is only a page. Continue?\n\n[user] continue\n\nReply to the user's last message.",
+      "expected_output": "Runs Sales list, iteration 3.1, red then green. The iteration's test needs sample_sales() from tests/helpers.py, which fails: its data file was renamed to sample-sales.json without the helper. The iteration goes around it, for example with sales built in the test, and leaves the helper as it is. The report flags the broken helper up front: what is broken, how the iteration went around it, and the one-line fix, offered as an iteration of its own with a recommendation. The offer is in iterations.md. Describes the next iteration with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "The sales list CSV exists for finance and admins and refuses staff",
+        "Sales list, iteration 3.1 is done in iterations.md and Current moved on",
+        "tests/helpers.py and tests/data are as the fixture left them: the fix is not in this iteration",
+        "The broken sample_sales() is in a blueprint file, so a compaction does not lose it",
+        "The reply flags the broken sample_sales() near its top, not among later notes",
+        "The reply says what is broken, how the iteration went around it, and the fix with its size",
+        "The reply offers the fix as an iteration of its own and recommends whether to run it before the planned one",
+        "Ends with the next iteration described and the question to continue last"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "record-same-turn",
+      "fixture": "record",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge finance-exports 1\n\n[assistant]\nPipeline 1, CSV downloads: Access, iteration 1.1 is done.\n\nA view can now let several roles through. `require_role(\"finance\", \"admin\")` admits a finance user or an admin and refuses everyone else with `Forbidden`, and `finance` is a known role. The sales list's `require_role(\"admin\")` works as before.\n\nRed first: `test_admin_passes_either_role` failed, an admin got `Forbidden` from `require_role(\"finance\", \"admin\")`.\n\nThis was the release point for pipeline 2, PDF downloads: it can start now, and it receives the access rule for finance and admins.\n\nNext, Monthly report, iteration 2.1: finance and admins download the monthly report as a CSV file, with the page's rows under a header row and amounts in euros with two decimals. Today the report is only a page and a JSON view. Continue?\n\n[user] continue. one thing first: Excel opens a UTF-8 CSV without a byte order mark as Windows-1252, so the ü in Zürich turns into Ã¼, and finance has regions like Zürich and Münster. Start each CSV with the byte order mark.\n\nReply to the user's last message.",
+      "expected_output": "Runs Monthly report, iteration 2.1 with the byte order mark at the start of the file, red then green. In the same turn, the monthly CSV download reaches What was built in the pipeline's file of the TARS Blueprint Record, the user's decision (each CSV starts with a byte order mark) reaches the knowledge and the Build decisions of the pipeline's file of the TARS Blueprint Record, and the trap (Excel reads a UTF-8 CSV without one as Windows-1252) reaches the knowledge and that file, under Traps or next to the decision it explains, each in the record's own words, with no question numbers or iteration labels; that file's State stays in progress. Marks the iteration done, reports, describes the next iteration with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "The monthly CSV exists for finance and admins and refuses staff",
+        "Monthly report, iteration 2.1 is done in iterations.md and Current moved on",
+        "The pipeline's record file's What was built gains the monthly CSV download",
+        "The decision reaches the pipeline's record file, Build decisions: each CSV starts with a byte order mark",
+        "The trap reaches the pipeline's record file, in any section: Excel misreads a UTF-8 CSV without a byte order mark",
+        "The pipeline's record file's State stays in progress",
+        "No question numbers or iteration labels in the pipeline's record file",
+        "The new entries in the pipeline's record file say why",
+        "Ends with the next iteration described and the question to continue last"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "task-done",
+      "fixture": "region-done",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge region-filter 1\n\n[assistant]\nPipeline 1, region filter: every iteration is done, so this is the end of the pipeline.\n\nDone when:\n1. The monthly page and its JSON show only the region asked for, matched in any case: met, `monthly_sales` in `reports/queries.py`, tested in `tests/test_queries.py` and `tests/test_views.py`.\n2. A region with no sales shows no rows and a total of 0.00: met, `test_a_region_with_no_sales_has_no_rows_and_a_zero_total`.\n3. Without a region, both show every region, as before: met, `test_every_region_without_one`.\n\nEverything since the Base commit is committed, so the review can start from it. The review skills this session lists:\n1. code-review\n2. mattpocock-skills:code-review\n\nWhich one should run?\n\n[user] 1\n\n[assistant]\nThe review of everything since the Base commit found one thing:\n\n1. `monthly_sales` compares regions with `casefold()` but keeps spaces, so \" North\" with a leading space finds nothing.\n\nFix it as an iteration, list it, or drop it?\n\n[user] drop it, the sales form trims the names before they are saved\n\nReply to the user's last message.",
+      "expected_output": "With the one finding dropped, every Done when item met and no glossary or ADRs to merge, the pipeline is done: Current says so, and the State of the pipeline's file in the TARS Blueprint Record goes from built to done in the same turn. No code changes and nothing else starts.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "Current says the pipeline is done",
+        "The pipeline's record file's State is done",
+        "Says the pipeline is done and starts nothing else"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "tagged-decisions",
+      "fixture": "tagged",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge finance-exports 1\n\n[assistant]\nPipeline 1, CSV downloads. Access, iteration 1.1: two decisions before the code.\n\n❓ **Q1** - **What a refused user reads**: the downloads accept two roles. When a staff user opens one, should the error name both, `finance or admin role required`, or stay one message for every refusal?\n\n➡️ Name both: support can tell from the message which roles open the view.\n\n---\n\n❓ **Q2** - **How a view names its roles**: should `require_role` keep its name and take the roles as separate arguments, `require_role(\"finance\", \"admin\")`?\n\n➡️ Yes: every `require_role(\"admin\")` in the code keeps working as it is.\n\n[user] Q1: name both. Q2: yes\n\n[assistant]\nPipeline 1, CSV downloads: Access, iteration 1.1 is done.\n\nA view can now let several roles through. `require_role(\"finance\", \"admin\")` admits a finance user or an admin and refuses everyone else with `Forbidden`, and `finance` is a known role. The sales list's `require_role(\"admin\")` works as before.\n\nRed first: `test_admin_passes_either_role` failed, an admin got `Forbidden` from `require_role(\"finance\", \"admin\")`.\n\nThis was the release point for pipeline 2, PDF downloads: it can start now, and it receives the access rule for finance and admins.\n\nNext, Monthly report, iteration 2.1: finance and admins download the monthly report as a CSV file, with the page's rows under a header row and amounts in euros with two decimals. Today the report is only a page and a JSON view. Continue?\n\n[user] continue\n\n[assistant]\nMonthly report, iteration 2.1: one decision before the code.\n\n❓ **Q3** - **The ü in Zürich**: finance has regions like Zürich and Münster. Excel opens a UTF-8 CSV that does not start with a byte order mark as Windows-1252, so Zürich shows as ZÃ¼rich. Should each CSV start with the byte order mark, so that Excel reads it as UTF-8?\n\n➡️ Yes: Excel shows the names as the page does, and programs that read the file as UTF-8 skip the mark.\n\n[user] Q3: yes. finance opens every file in Excel\n\nReply to the user's last message.",
+      "expected_output": "Runs Monthly report, iteration 2.1 with the byte order mark at the start of the file, red then green. The user's answer is written to the knowledge as a decision, and the code that adds the byte order mark has a comment that gives its why (Excel reads a UTF-8 CSV without one as Windows-1252). Neither carries a question number, though every decision already in the blueprint's knowledge ends with one, the answers to this chat's own Q1 and Q2 included: the decision says what was decided and quotes the user's words, and the comment says the why in words. The numbers already in the knowledge stay as they are. Marks the iteration done, reports, describes the next iteration with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "The monthly CSV exists for finance and admins, refuses staff and starts with the byte order mark",
+        "Monthly report, iteration 2.1 is done in iterations.md and Current moved on",
+        "The decision reaches the knowledge: each CSV starts with a byte order mark",
+        "No new question number in the knowledge",
+        "No question number already in the knowledge is taken off",
+        "A code comment gives the byte order mark's why",
+        "No question number in the new code comments",
+        "Ends with the next iteration described and the question to continue last"
+      ]
+    }
+  ]
+}

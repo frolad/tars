@@ -1,0 +1,6 @@
+interface:
+  display_name: "Workshop Forge"
+  short_description: "Build a pipeline one reviewed iteration at a time"
+
+policy:
+  allow_implicit_invocation: false

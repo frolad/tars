@@ -1,0 +1,10 @@
+node_modules/
+__pycache__/
+.venv/
+.env
+*.local.json
+.DS_Store
+evals/results/
+.blueprints/
+preparations/
+.claude/worktrees/

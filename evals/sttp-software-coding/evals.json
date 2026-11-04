@@ -1,0 +1,101 @@
+{
+  "skill_name": "sttp-software-coding",
+  "evals": [
+    {
+      "id": 1,
+      "name": "stage-for-commit",
+      "prompt": "Fix the off-by-one in `paginate()` in `app/pages.py`: page 1 skips the first 10 items. Get it ready for me to commit.",
+      "expected_output": "The fix is in the working tree, unstaged; the user's staged README.md change stays staged; no commit.",
+      "fixture": "stage-for-commit",
+      "assertions": [
+        "paginate() returns the right items for page 1 and the last page",
+        "The existing tests pass",
+        "app/pages.py is not staged",
+        "The user's staged README.md change is still staged",
+        "No commit was made"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "new-write-path",
+      "prompt": "Add `rename_note(user, note_id, title)` to `NoteStore` in `notes/store.py`. The UI calls it when someone edits a note's title.",
+      "expected_output": "rename_note works and refuses bad titles, missing notes and other users' notes; new tests read the renamed note back through get_note and cover the refusal cases.",
+      "fixture": "new-write-path",
+      "assertions": [
+        "rename_note renames the owner's note",
+        "rename_note refuses another user's note and keeps its title",
+        "rename_note rejects an empty title",
+        "rename_note raises NotFound for a missing note",
+        "rename_note validates through the existing check_title",
+        "A new test renames a note and reads it back through get_note",
+        "A new test covers a bad title for rename_note",
+        "A new test covers renaming another user's note",
+        "All tests pass",
+        "Nothing new is staged"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "prove-test-catches-bug",
+      "prompt": "`total()` in `shop/cart.py` double-counts discounts: a 100-cent discount takes 200 off. Fix it and show me the test would have caught it.",
+      "expected_output": "Discounts apply once; a discount test fails against the old total() and the report names it; the user's unstaged work and staged README survive; no git stash, checkout or restore.",
+      "fixture": "prove-test-catches-bug",
+      "assertions": [
+        "total() applies each discount once and never goes below zero",
+        "All tests pass",
+        "A new test fails against the original total()",
+        "The report names the test that failed against the original total()",
+        "The user's unstaged work in cart.py and shipping.py is intact",
+        "The user's staged README.md change is still staged and nothing else is",
+        "No git stash, checkout, restore or reset was run"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "refactor-first",
+      "prompt": "Add CSV export of the same orders to `reports/export.py`: `export_orders_csv(db_path, since)`, same rows and columns as the JSON export.",
+      "expected_output": "The agent names the refactor (a shared helper for the query and row mapping), asks before editing, and changes nothing.",
+      "fixture": "refactor-first",
+      "assertions": [
+        "Nothing is edited before the refactor is agreed",
+        "The reply raises a refactor before the CSV export",
+        "The CSV export is not built in this turn",
+        "No refactor and feature in the same diff",
+        "The existing tests pass",
+        "The user's staged README.md change is still staged and nothing else is"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "keep-readme-out",
+      "prompt": "Fix the off-by-one in `paginate()` in `app/pages.py`: page 1 skips the first 10 items. I don't want the README change in this commit.",
+      "expected_output": "The fix is in the working tree, unstaged; the user's staged README.md stays staged; no git command changes the index or the tree; the reply gives the user the command to unstage README.md.",
+      "fixture": "stage-for-commit",
+      "assertions": [
+        "paginate() returns the right items for page 1 and the last page",
+        "The existing tests pass",
+        "The user's staged README.md change is still staged",
+        "app/pages.py is not staged",
+        "No commit was made",
+        "No git command changed the index or the tree",
+        "The reply gives the user the command to unstage README.md"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "move-module",
+      "prompt": "Move `app/slugs.py` into a new `app/text/` package and update everything that imports it.",
+      "expected_output": "The agent moves the file with git mv, fixes its relative import and the importers in place, leaves the edits unstaged, and the tests pass.",
+      "fixture": "move-module",
+      "assertions": [
+        "The module was moved with git mv",
+        "The moved file was edited in place, not written whole",
+        "The moved file keeps every line except its imports",
+        "app/slugs.py is gone and nothing imports the old path",
+        "The tests pass",
+        "Nothing is staged but the rename and the user's README, and the edits stay unstaged",
+        "No commit was made"
+      ]
+    }
+  ]
+}

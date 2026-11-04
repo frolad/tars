@@ -1,0 +1,88 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" session-start",
+            "timeout": 5,
+            "statusMessage": "Loading STTP"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" session-start 2",
+            "timeout": 5,
+            "statusMessage": "Loading STTP"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" session-start 3",
+            "timeout": 5,
+            "statusMessage": "Loading STTP"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" prompt",
+            "timeout": 5,
+            "statusMessage": "STTP"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" pre-edit",
+            "timeout": 5,
+            "statusMessage": "Loading STTP coding"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" pre-edit 2",
+            "timeout": 5,
+            "statusMessage": "Loading STTP coding"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" pre-bash",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" subagent-start",
+            "timeout": 5,
+            "statusMessage": "Loading STTP"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sttp.py\" subagent-start 2",
+            "timeout": 5,
+            "statusMessage": "Loading STTP"
+          }
+        ]
+      }
+    ]
+  }
+}

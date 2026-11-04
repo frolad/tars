@@ -1,0 +1,6 @@
+interface:
+  display_name: "STTP Guards"
+  short_description: "Show or switch the TARS git guard, for this session or by default"
+
+policy:
+  allow_implicit_invocation: false

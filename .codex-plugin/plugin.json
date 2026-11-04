@@ -1,0 +1,28 @@
+{
+  "name": "tars",
+  "version": "0.7.0",
+  "description": "For engineers who still want to be engineers, in the age of AI agents: the sttp rules for straight-to-the-point answers and code, and the workshop, which defines a task with you and builds it one reviewed iteration at a time. Skills and hooks for Claude Code and Codex.",
+  "author": {
+    "name": "frolad",
+    "url": "https://github.com/frolad"
+  },
+  "repository": "https://github.com/frolad/tars",
+  "license": "MIT",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "TARS",
+    "shortDescription": "For engineers who still want to be engineers",
+    "longDescription": "TARS: the sttp rules (straight to the point) and the workshop process (define a task, build it one reviewed iteration at a time). Core skill: sttp. Works in Claude Code and Codex.",
+    "developerName": "frolad",
+    "category": "Productivity",
+    "capabilities": [
+      "Instructions"
+    ],
+    "websiteURL": "https://github.com/frolad/tars",
+    "defaultPrompt": [
+      "Use sttp for this task.",
+      "Answer straight to the point."
+    ]
+  }
+}

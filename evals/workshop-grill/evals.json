@@ -1,0 +1,95 @@
+{
+  "skill_name": "workshop-grill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/grill we need a CSV export for the reports",
+      "expected_output": "Reads the repo first; round 1 confirms the intent as recommended answers; no detail question and no question the repo answers; the transcript shape; no file changed.",
+      "files": [],
+      "fixture": "base",
+      "assertions": [
+        "No file in the repo changed",
+        "No other skill was loaded",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "Read the repo before replying (3+ reads)",
+        "Round 1 states a reading of the goal (who uses it and what for) for the user to confirm",
+        "Round 1 has no detail question (separator, encoding, file name, columns, amount format)",
+        "No question asks the user a fact the repo answers (what exists, the columns, how amounts are stored)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "The conversation so far:\n\n[user] /grill we need a CSV export for the reports\n\n[assistant]\n❓ **Q1** - **Goal**: My reading: finance needs the monthly sales report as a file they open in Excel for the month-end close (README.md:3). Only the monthly report; the admin sales list stays as it is. Right?\n\n➡️ yes, it is the only report the README ties to finance.\n\n[user] Q1: yes\n\n[assistant]\n❓ **Q1** - **Amount representation**: Serialize `amount_cents` raw, or map it through `format_eur` at the export boundary?\n\n➡️ through `format_eur`, the same mapping `to_json` uses (`reports/export.py:7`).\n\n---\n\n❓ **Q2** - **Separator**: Comma or semicolon?\n\n➡️ semicolon, because Excel in European locales splits on `;`.\n\n---\n\n❓ **Q3** - **Totals row**: Add a final row with the month's total, as the page does (`templates/monthly.html:7`)?\n\n➡️ yes, the same total the page shows.\n\n[user] Q1 explain. Q2 idk. Q3 yes\n\nReply to the user's last message.",
+      "expected_output": "Q1 re-asked in plain terms with a concrete picture; Q2 gets a narrower question or a firmer recommendation; Q3 taken as exactly the option shown; new questions take new numbers; the transcript shape; no file changed.",
+      "files": [],
+      "fixture": "base",
+      "assertions": [
+        "No file in the repo changed",
+        "No other skill was loaded",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "Q1 is re-asked in plain terms with a concrete picture (sample CSV lines or a before and after)",
+        "Q1's options say what finance sees in Excel, not only what changes in the code",
+        "The 'idk' on Q2 gets a narrower question or a firmer recommendation, not a silent pick",
+        "Q3 is taken as exactly the option shown: not re-asked, nothing added to it"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "You are running workshop-forge on the task in `.blueprints/csv-export/`. workshop-forge's step 1 is the mini grill for the current iteration, the light mode of the grill skill. The pipeline is `.blueprints/csv-export/pipeline.md`, its knowledge is `.blueprints/csv-export/knowledge.md`.\n\nFor this turn, run the mini grill only. If it has questions for the user, your final message is that message. If nothing needs the user, say so and stop: do not start the iteration in this turn.",
+      "expected_output": "Reads the pipeline and knowledge; resolves facts itself; nothing needs the user, so one line and a stop; no file changed.",
+      "files": [],
+      "fixture": "light-clear",
+      "assertions": [
+        "No file in the repo changed",
+        "No other skill was loaded",
+        "No question is put to the user",
+        "The reply is short: at most 80 words",
+        "Read the pipeline and the knowledge file",
+        "The reply says that nothing needs the user"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "You are running workshop-forge on the task in `.blueprints/csv-export/`. workshop-forge's step 1 is the mini grill for the current iteration, the light mode of the grill skill. The pipeline is `.blueprints/csv-export/pipeline.md`, its knowledge is `.blueprints/csv-export/knowledge.md`.\n\nFor this turn, run the mini grill only. If it has questions for the user, your final message is that message. If nothing needs the user, say so and stop: do not start the iteration in this turn.",
+      "expected_output": "Resolves the facts itself; puts only the access decision to the user, in one short message, with a recommendation and options in end-user terms; no intent round; no settled item re-asked; no file changed.",
+      "files": [],
+      "fixture": "light-decision",
+      "assertions": [
+        "No file in the repo changed",
+        "No other skill was loaded",
+        "Read the pipeline and the knowledge file",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "One or two questions reach the user",
+        "The access decision is asked",
+        "No settled item is asked again (format, separator, file name, header, totals)",
+        "The reply is one short message: at most 250 words",
+        "The agent resolved the facts: the reply states that the JSON view is login-only and that no finance role exists",
+        "No intent round: the goal of the iteration is not put to the user",
+        "The access options say who can download the file"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "You are running workshop-craft on the task in `.blueprints/csv-export/`. The user has approved every section of the scope, `.blueprints/csv-export/02-scope.md`, through questions Q1 to Q12; the decisions are in `.blueprints/csv-export/00-knowledge.md`. workshop-craft's next step is the self-check before the split: re-read the scope's Done when list and put each item that cannot be checked as written to the user, with its fix, as a round of the grill.\n\nFor this turn, write that round only: your final message is the round. Edit no file.",
+      "expected_output": "Asks about items 2, 4 and 5 (6 is fair too: it already passes before any work), not about 1, each titled by its subject in plain words, with what goes wrong; earlier answers named by what they decided; the access fix follows the approved access; numbering continues at Q13; the transcript shape; no file changed.",
+      "files": [],
+      "fixture": "self-check",
+      "assertions": [
+        "No file in the repo changed",
+        "No other skill was loaded",
+        "Questions use the transcript shape: '❓ **Qn** - **title**:' labels, '➡️' answers, no other emoji",
+        "Every question carries a recommended answer",
+        "Numbering continues after Q12",
+        "Every question's title names its subject, not only a label such as 'Done when 4'",
+        "Asks about items 2, 4 and 5, and not about item 1",
+        "Each problem comes with its concrete failure, not only a category such as 'vague' or 'not checkable'",
+        "The access fix follows the approved access (any logged-in staff member) and says there is no finance role",
+        "An earlier answer is named by what it decided, not by its number alone ('Q7' alone fails, 'your answer on access, any logged-in staff member' passes)",
+        "'Done when' and 'self-check' are used at most with their meaning in plain words, and no other label of the task is left unexplained"
+      ]
+    }
+  ]
+}

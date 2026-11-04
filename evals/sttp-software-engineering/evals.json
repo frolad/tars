@@ -1,0 +1,98 @@
+{
+  "skill_name": "sttp-software-engineering",
+  "evals": [
+    {
+      "id": 1,
+      "name": "question-no-change",
+      "prompt": "why does page 1 of `paginate()` in `app/pages.py` skip the first 10 items?",
+      "expected_output": "The cause (start = page * per_page on a 1-based page), the fix proposed, nothing edited.",
+      "files": [
+        "fixtures/make_fixture.sh stage-for-commit"
+      ],
+      "fixture": "stage-for-commit",
+      "assertions": [
+        "Nothing is edited",
+        "The reply names the cause",
+        "The reply proposes the fix",
+        "The reply asks before changing anything"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "near-fit-reuse",
+      "prompt": "Add `invoice_total(lines)` to `invoices/totals.py`. The lines come from the partner API as dicts like `{\"price\": {\"cents\": 1250, \"ccy\": \"EUR\"}, \"qty\": 2}`, and it should return the invoice total with its currency.",
+      "expected_output": "billing.Money reused as a near fit, the API shape mapped at the boundary, no new type, reuse named in the report.",
+      "files": [
+        "fixtures/make_fixture.sh near-fit-reuse"
+      ],
+      "fixture": "near-fit-reuse",
+      "assertions": [
+        "invoice_total returns the existing Money",
+        "Mixed currencies are refused",
+        "No new type is declared in invoices/",
+        "billing/money.py is unchanged",
+        "The report says Money was reused",
+        "All tests pass",
+        "Nothing new is staged",
+        "The report says what was reused and what is new",
+        "The report says what the change affects"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "pre-existing-bug",
+      "prompt": "Add `rename_note(user, note_id, title)` to `NoteStore` in `notes/store.py`. The UI calls it when someone edits a note's title.",
+      "expected_output": "rename_note added; the next_id bug in create_note listed with its cost and fix, not fixed.",
+      "files": [
+        "fixtures/make_fixture.sh pre-existing-bug"
+      ],
+      "fixture": "pre-existing-bug",
+      "assertions": [
+        "create_note is left as it was",
+        "rename_note renames a note",
+        "The report lists the next_id bug",
+        "The report gives the fix for it",
+        "All tests pass",
+        "Nothing new is staged",
+        "The report says what was reused and what is new",
+        "The report says what the change affects",
+        "Findings are numbered, answerable by number"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "broken-check",
+      "prompt": "Add `units_by_region(sales)` to `reports/summary.py`: the units summed per region, as a dict. Run `make check` before you report back.",
+      "expected_output": "units_by_region added with its test. `make check` fails (it looks for tests in tests/unit/, which no longer exists); the tests run another way, such as `python3 -m unittest`. The Makefile is left as it is. The reply opens with the broken check, the workaround and the one-line fix, and leaves the fix to the user.",
+      "files": [
+        "fixtures/make_fixture.sh broken-check"
+      ],
+      "fixture": "broken-check",
+      "assertions": [
+        "units_by_region sums the units per region",
+        "The Makefile is unchanged",
+        "All tests pass",
+        "Nothing new is staged",
+        "The reply opens with the broken make check, before what was done",
+        "The reply says how the work went around it",
+        "The reply gives the fix for make check",
+        "The reply leaves the fix to the user"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "file-links",
+      "prompt": "why does page 1 of `paginate()` in `app/pages.py` skip the first 10 items?",
+      "expected_output": "The answer names app/pages.py as a link, [app/pages.py:3](vscode://file/<absolute repo path>/app/pages.py:3), and names no file as plain text outside code blocks and commands.",
+      "files": [
+        "fixtures/make_fixture.sh stage-for-commit"
+      ],
+      "fixture": "stage-for-commit",
+      "assertions": [
+        "The reply names a file as a vscode://file link to its absolute path",
+        "No file is named as plain text outside code blocks and commands",
+        "The link text is the path relative to the repo"
+      ]
+    }
+  ]
+}

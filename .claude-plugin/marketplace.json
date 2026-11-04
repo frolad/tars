@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "tars",
+  "description": "TARS: skills and hooks for Claude Code and Codex, for engineers who still want to be engineers, in the age of AI agents.",
+  "owner": {
+    "name": "frolad",
+    "url": "https://github.com/frolad"
+  },
+  "plugins": [
+    {
+      "name": "tars",
+      "description": "The sttp rules and the workshop process.",
+      "source": "./",
+      "category": "productivity"
+    },
+    {
+      "name": "tars-mod",
+      "description": "Optional, Claude Code only: answers /sttp-mode, /sttp-guards and /workshop-questions with no model turn, pins STTP's status line under the prompt, and shows the /workshop-forge pipeline in a pane (/workshop-forge-pane).",
+      "source": "./mods/tars-mod",
+      "category": "productivity"
+    }
+  ]
+}

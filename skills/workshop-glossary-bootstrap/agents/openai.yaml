@@ -1,0 +1,6 @@
+interface:
+  display_name: "Workshop Glossary Bootstrap"
+  short_description: "Build an existing project's glossary, area by area"
+
+policy:
+  allow_implicit_invocation: false

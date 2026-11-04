@@ -1,0 +1,6 @@
+interface:
+  display_name: "Workshop Craft"
+  short_description: "Define a large task with the user and write its blueprint"
+
+policy:
+  allow_implicit_invocation: false

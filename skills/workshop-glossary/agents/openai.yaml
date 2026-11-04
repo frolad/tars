@@ -1,0 +1,3 @@
+interface:
+  display_name: "Workshop Glossary"
+  short_description: "The project's glossary and ADRs, each entry approved"

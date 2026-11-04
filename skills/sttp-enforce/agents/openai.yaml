@@ -1,0 +1,6 @@
+interface:
+  display_name: "STTP Enforce"
+  short_description: "Bring the files under a path to sttp's rules"
+
+policy:
+  allow_implicit_invocation: false

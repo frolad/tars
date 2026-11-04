@@ -1,0 +1,6 @@
+interface:
+  display_name: "Workshop Questions"
+  short_description: "Show or set how grill questions are asked: dialog or transcript"
+
+policy:
+  allow_implicit_invocation: false
