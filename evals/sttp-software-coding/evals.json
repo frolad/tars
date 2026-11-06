@@ -96,6 +96,23 @@
         "Nothing is staged but the rename and the user's README, and the edits stay unstaged",
         "No commit was made"
       ]
+    },
+    {
+      "id": 7,
+      "name": "parallel-fetches",
+      "prompt": "Add `dashboard(client, user_id)` to `app/dashboard.py` for the home page: `{\"card\": ..., \"orders\": [...]}`, with the user's profile card and their open orders.",
+      "expected_output": "dashboard runs its two independent requests at the same time, not one after the other, builds the card through the existing profile_card, and leaves account_page as it is; a new test covers it; nothing new is staged and no commit is made.",
+      "fixture": "parallel-fetches",
+      "assertions": [
+        "dashboard returns the profile card and the open orders",
+        "dashboard runs its two requests at the same time",
+        "dashboard builds the card through the existing profile_card",
+        "The existing account_page is left as it is",
+        "A new test covers dashboard",
+        "All tests pass",
+        "Nothing new is staged",
+        "No commit was made"
+      ]
     }
   ]
 }

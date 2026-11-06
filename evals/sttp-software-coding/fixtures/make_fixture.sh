@@ -315,6 +315,64 @@ if __name__ == "__main__":
     unittest.main()
 PY
   ;;
+parallel-fetches)
+  echo "# app" > README.md
+  mkdir app; : > app/__init__.py
+  cat > app/dashboard.py <<'PY'
+async def fetch_profile(client, user_id):
+    return await client.get(f"/users/{user_id}")
+
+
+async def fetch_orders(client, user_id, status="open"):
+    return await client.get(f"/users/{user_id}/orders?status={status}")
+
+
+async def fetch_invoices(client, user_id):
+    return await client.get(f"/users/{user_id}/invoices")
+
+
+async def profile_card(client, user_id):
+    profile = await fetch_profile(client, user_id)
+    return {"name": profile["name"], "avatar": profile["avatar_url"]}
+
+
+async def account_page(client, user_id):
+    card = await profile_card(client, user_id)
+    invoices = await fetch_invoices(client, user_id)
+    return {"card": card, "invoices": invoices}
+PY
+  cat > tests/test_dashboard.py <<'PY'
+import asyncio
+import unittest
+
+from app.dashboard import account_page, profile_card
+
+PROFILE = {"name": "Ann", "avatar_url": "/a/7.png"}
+
+
+class FakeClient:
+    def __init__(self, responses):
+        self.responses = responses
+
+    async def get(self, path):
+        return self.responses[path]
+
+
+class DashboardTest(unittest.TestCase):
+    def test_profile_card(self):
+        card = asyncio.run(profile_card(FakeClient({"/users/7": PROFILE}), 7))
+        self.assertEqual(card, {"name": "Ann", "avatar": "/a/7.png"})
+
+    def test_account_page(self):
+        client = FakeClient({"/users/7": PROFILE, "/users/7/invoices": [{"id": 3}]})
+        page = asyncio.run(account_page(client, 7))
+        self.assertEqual(page["invoices"], [{"id": 3}])
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+  ;;
 *) echo "unknown case $case_name" >&2; exit 1 ;;
 esac
 git add -A; git commit -qm "Initial"

@@ -420,3 +420,7 @@ words to avoid, and ADRs offered only for decisions that are hard to reverse, su
 `workshop-glossary-bootstrap` takes its shape from Taylor Lilley's description of `canon-init` in
 [mattpocock/skills#930](https://github.com/mattpocock/skills/issues/930): mine the sources, draft, ask only about
 the conflicts, publish. No text is adapted.
+
+Three lines of the Write list in `sttp-software-coding` take their checks from Claude Code's bundled `simplify`
+skill: no wasted work, no state that can be derived, copy-paste made into one function, deep nesting turned into
+early returns, and no long-lived closure that keeps large values alive. No text is adapted.

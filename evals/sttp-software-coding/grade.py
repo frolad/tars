@@ -42,7 +42,7 @@ def test_functions(repo):
     for f in sorted((repo / "tests").glob("test_*.py")):
         src = f.read_text()
         for node in ast.walk(ast.parse(src)):
-            if isinstance(node, ast.FunctionDef) and node.name.startswith("test"):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test"):
                 yield node.name, ast.get_source_segment(src, node) or ""
 
 
@@ -238,8 +238,72 @@ def grade_move(run, repo):
     ]
 
 
+# A client whose every request takes 50 ms and logs when it starts and ends: two requests run at the same time
+# when both start before the first one ends.
+DASHBOARD = '''
+import asyncio, json
+from app.dashboard import dashboard
+events = []
+RESPONSES = {"/users/7": {"name": "Ann", "avatar_url": "/a/7.png"}, "/users/7/orders?status=open": [{"id": 1}, {"id": 2}]}
+class Client:
+    async def get(self, path):
+        events.append("start " + path)
+        await asyncio.sleep(0.05)
+        events.append("end " + path)
+        return RESPONSES[path]
+result = asyncio.run(dashboard(Client(), 7))
+print(json.dumps({"result": result, "events": events}))
+'''
+DASHBOARD_BEFORE = {"fetch_profile", "fetch_orders", "fetch_invoices", "profile_card", "account_page"}
+
+
+def function_source(src, name):
+    node = next((n for n in ast.parse(src).body if isinstance(n, (ast.AsyncFunctionDef, ast.FunctionDef))
+                 and n.name == name), None)
+    return ast.get_source_segment(src, node) if node else None
+
+
+def grade_parallel(run, repo):
+    rc, out = py(repo, DASHBOARD)
+    try:
+        got = json.loads(out.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        got = None
+    expected = {"card": {"name": "Ann", "avatar": "/a/7.png"}, "orders": [{"id": 1}, {"id": 2}]}
+    events = got["events"] if got else []
+    results = [
+        check("dashboard returns the profile card and the open orders", got and got["result"] == expected,
+              f"result: {got['result']}" if got else out.strip()[-200:]),
+        check("dashboard runs its two requests at the same time",
+              len(events) == 4 and all(e.startswith("start") for e in events[:2]),
+              f"events: {events}" if got else out.strip()[-200:]),
+    ]
+
+    src = (repo / "app" / "dashboard.py").read_text()
+    mine = [n for n in ast.parse(src).body if isinstance(n, (ast.AsyncFunctionDef, ast.FunctionDef))
+            and n.name not in DASHBOARD_BEFORE]  # dashboard and any helper written for it
+    calls = {c.func.id if isinstance(c.func, ast.Name) else getattr(c.func, "attr", "")
+             for n in mine for c in ast.walk(n) if isinstance(c, ast.Call)}
+    results.append(check("dashboard builds the card through the existing profile_card", "profile_card" in calls,
+                         f"new functions: {[n.name for n in mine]}; their calls: {sorted(calls)}"))
+    head = sh(["git", "show", "HEAD:app/dashboard.py"], repo)[1]
+    same = function_source(src, "account_page") == function_source(head, "account_page")
+    results.append(check("The existing account_page is left as it is", same, f"account_page unchanged: {same}"))
+
+    tests = [n for n, s in test_functions(repo) if re.search(r"\bdashboard\(", s)]
+    results.append(check("A new test covers dashboard", tests, f"tests calling dashboard: {tests}"))
+    ok, last, _ = unittest(repo)
+    results.append(check("All tests pass", ok, last))
+    st = staged(repo)
+    results.append(check("Nothing new is staged", st == {"README.md"}, f"staged: {sorted(st)}"))
+    commits = sh(["git", "rev-list", "--count", "HEAD"], repo)[1].strip()
+    results.append(check("No commit was made", commits == "1", f"commits on HEAD: {commits}"))
+    return results
+
+
 GRADERS = {"stage-for-commit": grade_stage, "new-write-path": grade_write_path, "prove-test-catches-bug": grade_prove,
-           "refactor-first": grade_refactor, "keep-readme-out": grade_keep_out, "move-module": grade_move}
+           "refactor-first": grade_refactor, "keep-readme-out": grade_keep_out, "move-module": grade_move,
+           "parallel-fetches": grade_parallel}
 
 
 def main(iteration):

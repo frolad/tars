@@ -1,6 +1,6 @@
 {
   "name": "tars",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "For engineers who still want to be engineers, in the age of AI agents: the sttp rules for straight-to-the-point answers and code, and the workshop, which defines a task with you and builds it one reviewed iteration at a time. Skills and hooks for Claude Code and Codex.",
   "author": {
     "name": "frolad",

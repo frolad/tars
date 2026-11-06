@@ -1,6 +1,6 @@
 # sttp-software-coding tests
 
-Six cases for the skill-creator loop, in `evals.json`, rebuilt on 2026-09-30 from the session transcript after
+Seven cases for the skill-creator loop, in `evals.json`, rebuilt on 2026-09-30 from the session transcript after
 the workspace in `/tmp` was lost:
 
 1. `stage-for-commit`: fix `paginate()`, "get it ready for me to commit". The fix stays unstaged, the user's
@@ -16,6 +16,10 @@ the workspace in `/tmp` was lost:
 6. `move-module`: move `app/slugs.py`, which has a relative import, into a new `app/text/` package. The file is
    moved with `git mv` and edited in place, not written again; only its imports change; the rename is the only new
    staged change. Added 2026-10-14.
+7. `parallel-fetches`: add an async `dashboard()` with the profile card and the open orders, next to
+   `account_page()`, which awaits its two requests one after the other. The obvious draft awaits the card, then the
+   orders; the checks want the two requests to run at the same time, the card built through the existing
+   `profile_card()`, `account_page()` left as it is, and a new test. Added 2026-11-04.
 
 - `fixtures/make_fixture.sh <fixture> <dir>` builds the repo a case runs in, in the state the user left it: one
   reviewed change staged, and for `prove-test-catches-bug` unstaged work in progress.

@@ -2,6 +2,25 @@
 
 Changes from 0.7.0 on. Each version's section is also its GitHub release's text.
 
+## 0.7.1
+
+### Changes
+
+- The coding rules ask for no wasted work while the code is written: nothing computed or fetched twice, no query or
+  file read inside a loop when one before it does, independent requests and queries run at the same time, nothing
+  slow added to startup or a hot path. New code next to a function that does it the slow way does not copy it; that
+  function stays as it is, and the report names it.
+- The coding rules also ask for no state that can be derived from other state, one function with a parameter instead
+  of copy-paste with a small change, early returns instead of deep nesting, and no long-lived closure that keeps
+  large values alive.
+- These checks hold for the code a change writes. They never on their own make the agent change code that already
+  exists: the report names the cost instead. They take their ideas from Claude Code's bundled `/simplify` skill.
+
+### For contributors
+
+- The coding evals have a seventh case, `parallel-fetches`: an async dashboard added next to a function that awaits
+  its two requests one after the other. The coding grader also finds `async def` tests.
+
 ## 0.7.0
 
 The first public version of TARS and of its optional mod, tars-mod, after 0.5.4 and 0.1.10.
