@@ -1,6 +1,6 @@
 # workshop-forge tests
 
-Fourteen cases for the skill-creator loop, in `evals.json`: `/workshop-forge` alone picking and running the first
+Eighteen cases for the skill-creator loop, in `evals.json`: `/workshop-forge` alone picking and running the first
 iteration, a decision in the mini grill, "continue", a breaking point, a reorganization, several fixes at the
 default size, starting from a session without a blueprint, whose record file keeps out a customer's name and a home
 path from the session, research started from a session outside git, the end of a pipeline, whose record file says
@@ -8,8 +8,17 @@ built, a "continue" that leaves two things for a later iteration, which must rea
 blueprint's files and not only the report, since the chat is gone after a compaction, a broken test helper
 the iteration must go around, flag first and offer to fix as an iteration of its own, a "continue" whose decision
 and trap must reach the pipeline's file of the TARS Blueprint Record in the same turn, the end of a task's only
-pipeline, which sets that file's State from built to done, and the answer to a mini grill's question on a blueprint
-whose knowledge gives every decision a question number, which the new decision and the code comment must not copy.
+pipeline, which sets that file's State from built to done, the answer to a mini grill's question on a blueprint
+whose knowledge gives every decision a question number, which the new decision and the code comment must not copy,
+a "continue" whose iteration moves the last caller of an old store, after which the next iteration must be the
+delete of that store, on its own, though the plan has it in a cleanup at the end, a "continue" whose iteration,
+as planned, has the intake write each sale to both the old store and the new one, while the move of the old store's
+last reader is blocked: before any code, the reply must propose not to build that write, the earlier cleanup
+instead, and say what stops working and until when, for the user to confirm, the same "continue" with the user
+keeping that write: the iteration builds it without asking again, and its report must say that a later iteration
+removes that code, name the iteration, and say which tests go with it, and the same "continue" in a repo where a job
+the plan never mentions still reads the old store: before any code, the reply must name that job and ask the user
+what to do with it.
 Not a `claude plugin eval` suite: that one is the `prompt.md` cases next to this folder.
 
 - `fixtures/make_fixture.sh <fixture> <dir>` builds the repo a case runs in, by real commits, so its tests pass at
@@ -28,6 +37,15 @@ Not a `claude plugin eval` suite: that one is the `prompt.md` cases next to this
   blueprint's knowledge, as real blueprints have them: "Decided by the user on 2026-09-30 (Q3).". workshop-craft's
   are Q1 to Q11 in file order, and pipeline 1's knowledge also holds the answers to the mini grill of Access,
   iteration 1.1, Q1 and Q2 of the forge session the case's conversation shows.
+  `store-intake-next` builds on the workshop-craft fixture `store-approved`, by calling its script: sales kept in a
+  JSON-lines file store, partway through their move to SQLite, `.blueprints/sales-sqlite/`. The pages, the jobs and
+  the admin correction use SQLite; the intake, the next iteration, is the file store's last caller; and the plan
+  has a sales list by month before the cleanup that deletes the file store.
+  `store-export-waits` is the same repo at an earlier state of that move: the pages and the backup use SQLite, the
+  accounting export still reads the file, its move blocked until a colleague's branch is merged, and the next
+  iteration, as planned, has the intake write each sale to SQLite and to the file. Two cases run on it.
+  `store-missed-caller` is `store-export-waits` plus one commit, made after the plan: `jobs/stock_alert.py`, a job
+  that reads the sales from the file store and that the blueprint never mentions.
   `research` is a folder outside git with a `notes.md`.
 - Each run is a subagent working in the fixture repo, told not to use the Skill tool, to read
   `skills/sttp/SKILL.md`, `skills/sttp-software-engineering/SKILL.md`, `skills/workshop-grill/SKILL.md`,
@@ -45,10 +63,11 @@ Not a `claude plugin eval` suite: that one is the `prompt.md` cases next to this
     `with_skill`, in a config named `without_<change>` so that it sorts after `with_skill`.
 - `collect.py` saves a finished run from its transcript. `grade.py <iteration-dir>` runs the scripted checks and
   merges `judgement.json`, the checks graded by reading the reply. The scripted checks rebuild a fresh fixture
-  for comparison, run `python3 -m unittest` in the run's repo, call its CSV views and access rule, and read the
-  red step from the test runs in `events.json`. Compared with the fixture, the TARS Blueprint Record's files, under
-  `docs/tars-reports/<name>/` for a blueprint `.blueprints/<name>/`, count neither as changed files nor as changed
-  code; `record_files` holds that rule for the craft and glossary graders too.
+  for comparison, run `python3 -m unittest` in the run's repo, call its CSV views and access rule, or post a sale to
+  the store repo's intake, and read the red step from the test runs in `events.json`. Compared with the fixture,
+  the TARS Blueprint Record's files, under `docs/tars-reports/<name>/` for a blueprint `.blueprints/<name>/`, count
+  neither as changed files nor as changed code; `record_files` holds that rule for the craft and glossary graders
+  too.
 - `test_grade.py` checks `grade.py` itself on runs built from the fixtures, such as a reply that asks for the
   commit with "Before the review, commit ...": `python3 -m unittest discover -s evals/workshop-forge`.
 

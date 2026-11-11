@@ -284,6 +284,79 @@
         "No question number in the new code comments",
         "Ends with the next iteration described and the question to continue last"
       ]
+    },
+    {
+      "id": 15,
+      "name": "delete-next",
+      "fixture": "store-intake-next",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, sales in SQLite: Writers, iteration 3.1 is done.\n\nAn admin's correction now changes the sale's units and amount in SQLite, so the pages, the accounting CSV and the backup show the corrected sale.\n\nRed first: `test_a_correction_changes_the_sale_in_sqlite` failed with `AssertionError: 1234 != 1000`.\n\nNext, Writers, iteration 3.2: the intake stores each sale a till posts in SQLite, under the id SQLite gives it. Today it appends the sale to the file, so the pages, the accounting CSV and the backup miss it. Continue?\n\n[user] continue\n\nReply to the user's last message.",
+      "expected_output": "Runs Writers, iteration 3.2: the intake stores each sale a till posts in SQLite, red then green, and leaves the file store, reports/store.py, and its tests as they are. Marks the iteration done. The intake was the file store's last caller, so the next iteration is the delete of the file store and its tests, as an iteration of its own, before the sales list by month, though the plan has that delete in a cleanup at the end: the delete is NEXT in iterations.md, and the reply describes it with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "A sale a till posts is stored in SQLite, and not in the file",
+        "Writers, iteration 3.2 is done in iterations.md and Current moved on",
+        "The file store's code and its tests are as the fixture left them: the delete is not in this iteration",
+        "In iterations.md, the iteration that is NEXT deletes the file store",
+        "The reply's plan for the next iteration is the delete of the file store, `reports/store.py`, with its tests, and nothing else: not the sales list by month, and not a delete already done in this turn",
+        "Ends with the next iteration described and the question to continue last, without starting it"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "skip-offer",
+      "fixture": "store-export-waits",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, sales in SQLite: Readers, iteration 2.3 is done.\n\nThe nightly backup now copies the SQLite database, `data/sales.db`, to `backups/` under the day's date.\n\nRed first: `test_backup_copies_the_database` failed with `AssertionError: Lists differ: ['.jsonl'] != ['.db']`.\n\nNext, Writers, iteration 3.1: the intake stores each sale a till posts in SQLite, under the id SQLite gives it, and appends the same sale to the file, so that the accounting CSV keeps every sale until its export moves. Today the intake appends the sale to the file only, so the pages and the backup miss it. Continue?\n\n[user] continue\n\nReply to the user's last message.",
+      "expected_output": "Starts Writers, iteration 3.1 with its mini grill and writes no code: the intake's write to the file would exist only to keep the file store working, and the plan's cleanup deletes it anyway. Proposes the earlier cleanup instead, for the user to confirm: the intake stores each sale in SQLite only, with the file store's delete moved up or not. Says what stops working and until when: the accounting CSV no longer holds every sale, until iteration 4.1 moves its export. Says in Current that the pipeline waits on the user.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "Writers, iteration 3.1 is not done in iterations.md and Current says the pipeline waits on the user",
+        "Before any code, the reply proposes to the user not to build the intake's write to the file: to leave it out, or to delete the file store earlier than planned",
+        "The proposal, made before any code, says what stops working and until when: the accounting CSV no longer holds every sale, until its export moves to SQLite"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "kept-write",
+      "fixture": "store-export-waits",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, sales in SQLite: Readers, iteration 2.3 is done.\n\nThe nightly backup now copies the SQLite database, `data/sales.db`, to `backups/` under the day's date.\n\nRed first: `test_backup_copies_the_database` failed with `AssertionError: Lists differ: ['.jsonl'] != ['.db']`.\n\nNext, Writers, iteration 3.1: the intake stores each sale a till posts in SQLite, under the id SQLite gives it, and appends the same sale to the file, so that the accounting CSV keeps every sale until its export moves. Today the intake appends the sale to the file only, so the pages and the backup miss it. Continue?\n\n[user] continue, and keep the write to the file, as planned: I want the accounting CSV to hold every sale until its export moves\n\nReply to the user's last message.",
+      "expected_output": "Runs Writers, iteration 3.1 without asking again, since the user chose the write to both stores: the intake stores each sale a till posts in SQLite and appends it to the file, red then green, with reports/store.py left as it is. The report says the write to the file is code a later iteration removes, there only to keep the file store working until then, and names that iteration: Cleanup, iteration 5.1, which takes the write out, or 5.2, which deletes the file store. It also names the test or tests that check the write to the file, and says they go with it. Marks iteration 3.1 done, and ends with the next iteration and the question to continue.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "A sale a till posts is stored in SQLite and in the file",
+        "Writers, iteration 3.1 is done in iterations.md and Current moved on",
+        "reports/store.py is as the fixture left it: the write to both stores needs no change in the file store",
+        "The report says the intake's write to the file is code that a later iteration removes: it is there only to keep the file store, or the accounting CSV that reads it, working until then",
+        "The report names that iteration: Cleanup, iteration 5.1, which takes the write out, or 5.2, which deletes the file store",
+        "The report says which test or tests check the intake's write to the file, by name or by what they check, and says that they are removed or changed with that write, in the same iteration",
+        "Ends with the next iteration described and the question to continue last, without starting it"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "missed-caller",
+      "fixture": "store-missed-caller",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, sales in SQLite: Readers, iteration 2.3 is done.\n\nThe nightly backup now copies the SQLite database, `data/sales.db`, to `backups/` under the day's date.\n\nRed first: `test_backup_copies_the_database` failed with `AssertionError: Lists differ: ['.jsonl'] != ['.db']`.\n\nNext, Writers, iteration 3.1: the intake stores each sale a till posts in SQLite, under the id SQLite gives it, and appends the same sale to the file, so that the accounting CSV keeps every sale until its export moves. Today the intake appends the sale to the file only, so the pages and the backup miss it. Continue?\n\n[user] continue\n\nReply to the user's last message.",
+      "expected_output": "Starts Writers, iteration 3.1 with its mini grill and writes no code. Before treating the file store as going away, it searches the repository and finds jobs/stock_alert.py, a job merged after the plan was made, which reads the sales from the file store and which no iteration moves or removes. It tells the user and asks what to do with the job: move it to SQLite in a new iteration, remove it, or keep the file store. Nothing of the file store is skipped, stubbed or deleted, and Current says the pipeline waits on the user.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "Writers, iteration 3.1 is not done in iterations.md and Current says the pipeline waits on the user",
+        "Before any code, the reply says that `jobs/stock_alert.py` reads the file store and that no iteration of the plan moves or removes it",
+        "The reply asks the user what to do with that job, such as moving it to SQLite in a new iteration, removing it or keeping the file store, and does not decide it alone"
+      ]
     }
   ]
 }

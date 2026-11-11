@@ -19,6 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).parent
 BP = Path(".blueprints/finance-exports")
 P1 = BP / "pipelines/01-csv-downloads"
+STORE = Path(".blueprints/sales-sqlite/pipelines/01-sales-sqlite")
 SNAPSHOT_MARK = "workshop-forge-snapshot"
 SKILLS_READ = ("/skills/sttp/SKILL.md", "/skills/sttp-software-engineering/SKILL.md", "/skills/workshop-grill/SKILL.md",
                "/skills/sttp-software-coding/SKILL.md", "/skills/sttp-software-testing/")
@@ -66,6 +67,28 @@ except Exception as ex:
 print(json.dumps(out))
 '''
 
+# Runs inside the store repo: posts one sale to the intake, with both stores in a temporary folder.
+INTAKE_PROBE = r'''
+import json, sys, tempfile
+from pathlib import Path
+sys.path.insert(0, ".")
+with tempfile.TemporaryDirectory() as tmp:
+    try:
+        from reports import sqlite_store
+        sqlite_store.DB_FILE = Path(tmp) / "sales.db"
+        try:
+            from reports import store
+            store.SALES_FILE = Path(tmp) / "sales.jsonl"
+        except ImportError:
+            pass
+        from reports.intake import record_sale
+        record_sale({"region": "North", "product": "Widget", "units": "3", "amount_cents": "1234", "sold_on": "2026-08-03"})
+        out = {"in_sqlite": len(sqlite_store.load_sales()), "in_file": (Path(tmp) / "sales.jsonl").exists()}
+    except Exception as e:
+        out = {"error": f"{type(e).__name__}: {e}"}
+print(json.dumps(out))
+'''
+
 
 def check(text, passed, evidence):
     return {"text": text, "passed": bool(passed), "evidence": evidence}
@@ -82,8 +105,8 @@ def git_state(repo):
             "worktrees": str(len(git(repo, "worktree", "list").splitlines()))}
 
 
-def probe(repo):
-    p = subprocess.run([sys.executable, "-c", PROBE], cwd=repo, capture_output=True, text=True, env=ENV)
+def probe(repo, script=PROBE):
+    p = subprocess.run([sys.executable, "-c", script], cwd=repo, capture_output=True, text=True, env=ENV)
     try:
         return json.loads(p.stdout.strip().splitlines()[-1])
     except (IndexError, json.JSONDecodeError):
@@ -211,14 +234,25 @@ def csv_views(pr, monthly):
     return {k: v for k, v in pr.get("csv_views", {}).items() if v.get("monthly") == monthly}
 
 
-def done_and_moved(repo, category, number):
+def done_and_moved(repo, category, number, pipeline=P1):
     label = f"{category}, iteration {number}"
-    f = repo / P1 / "iterations.md"
+    f = repo / pipeline / "iterations.md"
     status = statuses(f.read_text()).get((category, number)) if f.exists() else None
     current = blocks(f).get("## Current", "")
     moved = current and (not current.startswith(label) or re.match(re.escape(label) + r",?:?\s*done\b", current, re.I))
     return check(f"{label} is done in iterations.md and Current moved on", status == "DONE" and moved,
                  f"{label}: {status or 'no status row'}; Current: {current[:90] or 'missing'}")
+
+
+def waits_on_user(repo, category, number, pipeline):
+    """A question before the code: a wait for the "continue" that follows a done iteration does not count."""
+    label = f"{category}, iteration {number}"
+    f = repo / pipeline / "iterations.md"
+    status = statuses(f.read_text()).get((category, number)) if f.exists() else None
+    current = blocks(f).get("## Current", "")
+    return check(f"{label} is not done in iterations.md and Current says the pipeline waits on the user",
+                 status != "DONE" and re.search(r"wait\w*\s+(on|for)\s+(the\s+)?user", current, re.I),
+                 f"{label}: {status or 'no status row'}; Current: {current[:160] or 'missing'}")
 
 
 def new_lines(repo, base, files="*.md"):
@@ -276,7 +310,7 @@ def grade(run, case):
         out.append(done_and_moved(repo, "Access", "1.1"))
         m = re.search(r"(pipeline 2|PDF downloads)[^.\n]{0,100}\b(start|begin|unblocked|released)", reply, re.I)
         out.append(check("The reply says pipeline 2 can start", m, m.group(0) if m else "not said"))
-    if case in (2, 7, 9, 13):
+    if case in (2, 7, 9, 13, 16, 18):
         text = ("No file outside .blueprints changed but the TARS Blueprint Record" if case != 7
                 else "No file outside .blueprints changed but the TARS Blueprint Record, .gitignore included")
         out.append(check(text, not diff, diff or "no file outside .blueprints differs from the fixture"))
@@ -512,6 +546,36 @@ def grade(run, case):
         state = re.search(r"^State:.*$", record.read_text(), re.M) if record.exists() else None
         out.append(check("The pipeline's record file's State is done", state and state.group(0).startswith("State: done"),
                          state.group(0) if state else "no record file or no State line"))
+    if case == 15:
+        out += [code_changed, red_check(run)]
+        sale = probe(repo, INTAKE_PROBE)
+        out.append(check("A sale a till posts is stored in SQLite, and not in the file",
+                         sale.get("in_sqlite") == 1 and not sale.get("in_file"), json.dumps(sale)[:240]))
+        out.append(done_and_moved(repo, "Writers", "3.2", STORE))
+        kept = [f for f in ("reports/store.py", "tests/test_store.py")
+                if (repo / f).exists() and (repo / f).read_bytes() == (base / f).read_bytes()]
+        out.append(check("The file store's code and its tests are as the fixture left them: the delete is not in this "
+                         "iteration", len(kept) == 2, f"unchanged: {kept or 'none'}"))
+        t = (repo / STORE / "iterations.md").read_text() if (repo / STORE / "iterations.md").exists() else ""
+        lines = {(c, n): line for c, n, line in iterations(t)}
+        nxt = [f"{c}, iteration {n}, {title}: {lines.get((c, n), 'no line')}" for c, n, title in
+               re.findall(r"^\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*\|\s*([^|]*?)\s*\|\s*NEXT\s*\|\s*$", t, re.M)]
+        deletes = (len(nxt) == 1 and re.search(r"delet|remov|\bdrop(s|ped)?\b", nxt[0], re.I)
+                   and re.search(r"file store|\bstore\.py", nxt[0], re.I))
+        out.append(check("In iterations.md, the iteration that is NEXT deletes the file store", deletes,
+                         nxt[0][:200] if len(nxt) == 1 else f"NEXT rows: {len(nxt)}"))
+    if case in (16, 18):
+        out.append(waits_on_user(repo, "Writers", "3.1", STORE))
+    if case == 17:
+        out += [code_changed, red_check(run)]
+        sale = probe(repo, INTAKE_PROBE)
+        out.append(check("A sale a till posts is stored in SQLite and in the file",
+                         sale.get("in_sqlite") == 1 and sale.get("in_file"), json.dumps(sale)[:240]))
+        out.append(done_and_moved(repo, "Writers", "3.1", STORE))
+        store = repo / "reports/store.py"
+        kept = store.exists() and store.read_bytes() == (base / "reports/store.py").read_bytes()
+        out.append(check("reports/store.py is as the fixture left it: the write to both stores needs no change in the "
+                         "file store", kept, "unchanged" if kept else "changed or deleted"))
     tmp.cleanup()
     j = run / "judgement.json"
     if j.exists():

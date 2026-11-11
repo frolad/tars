@@ -1,15 +1,20 @@
 # workshop-craft tests
 
-Ten cases for the skill-creator loop, in `evals.json`: the first round of a new task, a request that is several
+Eleven cases for the skill-creator loop, in `evals.json`: the first round of a new task, a request that is several
 tasks, the short path, writing the scope sections that have no question of their own, approving Out of scope and
 proposing the split, writing the split and asking for the review, a task taken from the session, a research task
-outside git, the user's OK to the review, and the answers to the first round, which bring the blueprint's first
-files. Not a `claude plugin eval` suite: that one is the `prompt.md` cases next to this folder.
+outside git, the user's OK to the review, the answers to the first round, which bring the blueprint's first
+files, and the split of a task that replaces an old store with other users (`split-old-store`), which wants no step
+spent on keeping the old store working. Not a `claude plugin eval` suite: that one is the `prompt.md` cases next to
+this folder.
 
 - `fixtures/make_fixture.sh <fixture> <dir>` builds the repo a case runs in. `base` is the reports repo with
   `.blueprints` not ignored by git; `ignored` is the same repo with `.blueprints` ignored and no blueprint yet.
   `scope-started`, `scope-approved`, `split-proposed` and `review` ignore `.blueprints` and hold
   `.blueprints/finance-exports/` as workshop-craft left it at that point of the case's conversation.
+  `store-approved` is the reports repo with sales kept in a JSON-lines file store that the pages, the intake, the
+  admin correction and three jobs use, `.blueprints` ignored, and `.blueprints/sales-sqlite/`, a move to SQLite, with
+  In scope approved.
 - Each run is a subagent working in the fixture repo, told not to use the Skill tool, to read
   `skills/sttp/SKILL.md`, `skills/sttp-software-engineering/SKILL.md` and `skills/workshop-grill/SKILL.md`, and to
   answer the case's prompt as the user's message. The two configs differ in what the user's `/workshop-craft` brings:

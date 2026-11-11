@@ -2,6 +2,36 @@
 
 Changes from 0.7.0 on. Each version's section is also its GitHub release's text.
 
+## 0.7.2
+
+### Changes
+
+- `/workshop-forge` deletes old code as soon as nothing planned needs it: the iteration that deletes it runs right
+  after the last iteration that needs that code, on its own, and not in a cleanup at the end of the pipeline. A plan
+  that has it later is reordered. Before, old code stayed until the end, and the iterations before it wrote code only
+  to keep it working, such as a write to both the old store and the new one, which was deleted later anyway.
+- When an iteration is planned to write such code, the agent proposes the earlier cleanup instead, before writing it.
+- A cleanup can come while something still uses the old code. The agent first looks through the whole repository for
+  what does, tells you what stops working and until which iteration, and goes on only after you confirm. The tree
+  still builds and the tests still pass in between: what they need is stubbed with the least code that does it.
+- When you keep such code, the iteration's report says what it keeps working, the tests that check it, and the
+  iteration that deletes it, so you review the diff knowing which lines are deleted later.
+- `/workshop-craft` proposes a task's split the same way: the iteration that deletes the old code comes right after
+  the last one that needs it, and where that order leaves a part of the system not working for a while, the proposal
+  says what stops working and until which iteration, for you to confirm.
+
+### For contributors
+
+- The workshop-craft evals have an eleventh case, `split-old-store`: the split of a task that moves sales from a
+  file store, which pages, an intake and three jobs use, to SQLite.
+- The workshop-forge evals have four new cases on the same repo, partway through that move: `delete-next`, where
+  the next iteration must be the delete of the old store though the plan has it at the end; `skip-offer`, where the
+  planned write to both stores must be put to the user before any code; `kept-write`, where the user keeps that
+  write and the report must name the iteration that deletes it; and `missed-caller`, where a job the plan never
+  mentions still reads the old store.
+- The workshop-forge grader can post a sale to that repo's intake, and tells a question asked before the code from
+  the wait for "continue" after a done iteration.
+
 ## 0.7.1
 
 ### Changes

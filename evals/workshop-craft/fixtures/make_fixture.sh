@@ -2,7 +2,8 @@
 # make_fixture.sh <fixture> <dir>: the reports repo. base: .blueprints is not ignored by git. ignored: it is, and
 # there is no blueprint yet. scope-started, scope-approved, split-proposed, review: .blueprints is ignored, and
 # .blueprints/finance-exports/ holds what workshop-craft has written by that point of the conversation in the case's
-# prompt.
+# prompt. store-approved: sales kept in a JSON-lines file store, .blueprints ignored, and .blueprints/sales-sqlite/,
+# a move to SQLite, with In scope approved.
 set -euo pipefail
 fixture=$1; dir=$2
 if [[ $fixture == research ]]; then
@@ -208,6 +209,264 @@ fi
 
 echo ".blueprints/" >> .gitignore
 if [[ $fixture == ignored ]]; then
+  git add -A; git commit -qm "initial"
+  exit 0
+fi
+if [[ $fixture == store-approved ]]; then
+  printf 'data/\nbackups/\n' >> .gitignore
+  mkdir -p jobs; : > jobs/__init__.py
+  cat > reports/store.py <<'PY'
+import json
+from dataclasses import asdict
+from datetime import date
+from pathlib import Path
+
+from .models import Sale
+
+SALES_FILE = Path("data/sales.jsonl")
+
+
+def _line(sale):
+    return json.dumps({**asdict(sale), "sold_on": sale.sold_on.isoformat()}) + "\n"
+
+
+def load_sales():
+    if not SALES_FILE.exists():
+        return []
+    rows = [json.loads(l) for l in SALES_FILE.read_text().splitlines() if l.strip()]
+    return [Sale(**{**r, "sold_on": date.fromisoformat(r["sold_on"])}) for r in rows]
+
+
+def append_sale(sale):
+    SALES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with SALES_FILE.open("a") as f:
+        f.write(_line(sale))
+
+
+def correct_sale(sale_id, **fields):
+    sales = [Sale(**{**asdict(s), **fields}) if s.id == sale_id else s for s in load_sales()]
+    SALES_FILE.write_text("".join(_line(s) for s in sales))
+PY
+  cat > reports/app.py <<'PY'
+from .store import load_sales
+
+
+def handle(view, request, *args):
+    """Every page gets the sales from the store before its view runs."""
+    request["sales"] = load_sales()
+    return view(request, *args)
+PY
+  cat > reports/intake.py <<'PY'
+from datetime import date
+
+from .models import Sale
+from .store import append_sale, load_sales
+
+
+def record_sale(payload):
+    """A sale posted by a shop's till."""
+    next_id = max((s.id for s in load_sales()), default=0) + 1
+    sale = Sale(next_id, payload["region"], payload["product"], int(payload["units"]),
+                int(payload["amount_cents"]), date.fromisoformat(payload["sold_on"]))
+    append_sale(sale)
+    return sale
+PY
+  cat >> reports/admin_views.py <<'PY'
+
+
+@require_role("admin")
+def correct_sale_view(request, sale_id):
+    form = request["form"]
+    correct_sale(sale_id, units=int(form["units"]), amount_cents=int(form["amount_cents"]))
+    return {"redirect": "/admin/sales"}
+PY
+  sed -i 's/^from .views import render$/from .store import correct_sale\nfrom .views import render/' reports/admin_views.py
+  cat > jobs/weekly_digest.py <<'PY'
+from collections import defaultdict
+
+from reports.money import format_eur
+from reports.store import load_sales
+
+
+def digest_text():
+    """The body of the weekly email to the regional managers: sales per region."""
+    totals = defaultdict(int)
+    for s in load_sales():
+        totals[s.region] += s.amount_cents
+    return "\n".join(f"{region}: {format_eur(c)} EUR" for region, c in sorted(totals.items()))
+PY
+  cat > jobs/accounting_export.py <<'PY'
+import csv
+import io
+
+from reports.money import format_eur
+from reports.store import load_sales
+
+
+def accounting_csv():
+    """The file the accounting system imports every night."""
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["id", "sold_on", "region", "product", "units", "amount"])
+    for s in load_sales():
+        w.writerow([s.id, s.sold_on.isoformat(), s.region, s.product, s.units, format_eur(s.amount_cents)])
+    return out.getvalue()
+PY
+  cat > jobs/backup.py <<'PY'
+import shutil
+from datetime import date
+from pathlib import Path
+
+from reports import store
+
+
+def backup(to=Path("backups")):
+    """Runs every night: a dated copy of the sales."""
+    to.mkdir(exist_ok=True)
+    shutil.copy(store.SALES_FILE, to / f"sales-{date.today().isoformat()}.jsonl")
+PY
+  cat > tests/test_store.py <<'PY'
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+from unittest import mock
+
+from jobs.accounting_export import accounting_csv
+from jobs.weekly_digest import digest_text
+from reports import store
+from reports.intake import record_sale
+
+
+class StoreTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        patcher = mock.patch.object(store, "SALES_FILE", Path(tmp.name) / "sales.jsonl")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        record_sale({"region": "North", "product": "Widget", "units": "3", "amount_cents": "1234",
+                     "sold_on": "2026-08-03"})
+
+    def test_recorded_sale_is_loaded(self):
+        self.assertEqual(store.load_sales()[0].sold_on, date(2026, 8, 3))
+
+    def test_correction_replaces_the_amount(self):
+        store.correct_sale(1, amount_cents=1000)
+        self.assertEqual(store.load_sales()[0].amount_cents, 1000)
+
+    def test_digest_has_region_totals(self):
+        self.assertEqual(digest_text(), "North: 12.34 EUR")
+
+    def test_accounting_csv_has_the_sale(self):
+        self.assertIn("1,2026-08-03,North,Widget,3,12.34", accounting_csv())
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+  bp=.blueprints/sales-sqlite
+  mkdir -p $bp
+  cat > $bp/00-knowledge.md <<'MD'
+# Knowledge
+
+## Facts
+
+### The file store
+- Sales are kept as JSON lines in `data/sales.jsonl`, through `load_sales`, `append_sale` and `correct_sale`;
+  a correction rewrites the whole file.
+  Source: reports/store.py, read 2026-11-02.
+- Every page gets its sales from `load_sales` before its view runs: the monthly report, its JSON and the admin
+  sales list.
+  Source: reports/app.py:4, reports/views.py, reports/admin_views.py, read 2026-11-02.
+- A till posts each sale to `record_sale`, which reads the file for the next id and appends the sale.
+  Source: reports/intake.py:7, read 2026-11-02.
+- An admin corrects a sale's units and amount through `correct_sale_view`.
+  Source: reports/admin_views.py, read 2026-11-02.
+
+### Other users of the store
+- Besides the pages, the intake and the admin correction, three jobs use the store: the weekly digest emails the
+  sales per region to the regional managers, the accounting export writes the CSV the accounting system imports
+  every night, and the backup copies `data/sales.jsonl` to `backups/` every night.
+  Source: jobs/weekly_digest.py, jobs/accounting_export.py, jobs/backup.py, read 2026-11-02.
+
+### Tests and dependencies
+- The tests run with `python3 -m unittest`; `tests/test_store.py` records a sale and reads it back through the
+  store, the digest and the accounting CSV. The repo has no dependencies; `sqlite3` is in Python's standard
+  library.
+  Source: README.md:6, tests/test_store.py, read 2026-11-02.
+
+## Decisions
+
+- Sales are kept in SQLite, in `data/sales.db`, through Python's `sqlite3`.
+  Why: two tills now post sales at the same time, and appends to the JSON-lines file can interleave.
+  Rules out: a database server; another file format.
+  Decided by the user on 2026-11-02.
+- The weekly digest is removed.
+  Why: the regional managers stopped reading it; finance confirmed nobody needs it.
+  Rules out: moving it to SQLite.
+  Decided by the user on 2026-11-02.
+- The accounting export and the backup read SQLite: the export with the same columns, the backup copying the
+  database.
+  Why: accounting imports the file every night, and the backup must hold every sale.
+  Decided by the user on 2026-11-02.
+- The file store, `reports/store.py`, is deleted, and nothing reads or writes `data/sales.jsonl` once the task is
+  done.
+  Why: one place for the sales.
+  Decided by the user on 2026-11-02.
+- Nothing ships until the whole task is done: the app is deployed once, when ops copies production's sales from
+  the file into SQLite.
+  Why: ops copies the sales once, with the app stopped.
+  Rules out: a release partway through the task.
+  Decided by the user on 2026-11-02.
+MD
+  cat > $bp/02-scope.md <<'MD'
+# Scope: sales in SQLite
+
+Current: Out of scope proposed (Q12); then the self-check and the split.
+
+## Task
+Sales move from the JSON-lines file `data/sales.jsonl` to SQLite. Why: two tills now post sales at the same time,
+and appends to the file can interleave. Today the pages, the intake, the admin correction and three nightly or
+weekly jobs all go through the file store, `reports/store.py`.
+
+## Current state
+Every page gets its sales from the file store before its view runs. The intake appends each sale a till posts, and
+an admin's correction rewrites the whole file. The weekly digest, the nightly accounting export and the nightly
+backup read the file too. Nothing uses SQLite today, and the repo has no dependencies.
+
+## Goal
+Every sale is stored and read in SQLite, and the file store is gone.
+
+## Done when
+1. The monthly report, its JSON and the admin sales list show the sales stored in SQLite.
+2. A sale a till posts, and an admin's correction, are stored in SQLite.
+3. The nightly accounting CSV comes from SQLite, with the same columns as today.
+4. The nightly backup copies the SQLite database.
+5. The weekly digest is gone.
+6. `reports/store.py` is deleted, and nothing reads or writes `data/sales.jsonl`.
+
+## In scope
+- Sales kept in SQLite: the pages, the intake, the admin correction, the accounting export and the backup use it.
+- The weekly digest removed: nobody reads it.
+- The file store, `reports/store.py`, deleted.
+
+## Approach
+- One new module reads and writes the sales in SQLite with Python's `sqlite3`; the store's callers use it.
+
+## Constraints
+- The tests run with `python3 -m unittest`; SQLite comes from Python's standard library, so no new dependency.
+- Nothing ships until the whole task is done: the app is deployed once, when ops copies production's sales into
+  SQLite.
+
+## Risks
+- A caller of the file store is missed and breaks once the store is deleted. How we would notice: a search for
+  `reports.store` and `sales.jsonl`, and the tests.
+- The accounting system rejects the new CSV. How we would notice: a test that compares its columns with today's.
+
+## Sources
+- The request in chat, 2026-11-02.
+MD
   git add -A; git commit -qm "initial"
   exit 0
 fi

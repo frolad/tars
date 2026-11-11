@@ -203,6 +203,25 @@
         "The reply goes on with the next round of the scope instead of stopping at the files"
       ],
       "files": []
+    },
+    {
+      "id": 11,
+      "name": "split-old-store",
+      "fixture": "store-approved",
+      "prompt": "The conversation so far:\n\n[assistant]\n(Rounds Q1 to Q11 are answered; In scope is approved, the other sections are written in `.blueprints/sales-sqlite/02-scope.md`, and the facts and decisions are in `00-knowledge.md`.)\n\nWritten to the scope: Constraints, Risks and Sources. You'll review them at the end. One section waits on you.\n\n❓ **Q12** - **Out of scope**:\n\n```\n- Copying production's sales from `data/sales.jsonl` into SQLite: ops does it once, at the release. Decided by the\n  user on 2026-11-02.\n- Changes to the accounting CSV's columns: the accounting system imports them as they are. Decided by the user on\n  2026-11-02.\n```\n\n➡️ approve as shown; each line is a decision from the rounds.\n\n[user] Q12: ok\n\nReply to the user's last message.",
+      "expected_output": "Writes Out of scope exactly as shown and proposes the split, ordered so that no step works on the file store only to keep it working: nothing written to both the file and SQLite; the file store deleted in a step of its own, right after the step that moves its last caller; and what that order leaves not working for a while, such as a new sale missing from the pages until the intake moves, said with the step that ends it, for the user to confirm. Writes no work map or pipeline yet.",
+      "assertions": [
+        "No file outside .blueprints changed, .gitignore included",
+        "Git untouched: one commit, only main, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "No work map or pipeline written before the split is confirmed",
+        "Out of scope is written as approved, word for word",
+        "In scope is unchanged",
+        "No step writes sales to both the file and SQLite, or changes the file store's code so that it works with SQLite",
+        "The file store's code is deleted in a step of its own, right after the step that moves its last caller: not in that step, and not in a cleanup after everything else",
+        "The proposal says what stops working for a while because of the order, and until which step, such as a new sale missing from the pages until the intake moves, and asks the user to confirm it instead of deciding it alone"
+      ],
+      "files": []
     }
   ]
 }

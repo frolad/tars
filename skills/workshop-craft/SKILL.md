@@ -57,6 +57,8 @@ Guidance, not a fixed structure. A task uses only the levels it needs, and level
    - the categories of each pipeline;
    - the suggested iteration size, in words.
 
+   Old code that the task replaces is deleted as early as the plan allows, in an iteration of its own: order its users so that this iteration comes right after the last one that needs the old code, which saves code written only to keep old code working; where that order leaves a part of the system not working for a while, the proposal says what stops working and until which iteration, for the user to confirm.
+
    Before sending it, check that every numbered Done when item belongs to at least one pipeline. An item with no owner means a pipeline is missing or the item should leave the scope; propose either one. The message writes each Done when item out in full, next to the pipelines that check it, not only its number: Done when has no question of its own, so this is where the user reads it before anything is built on it.
 
    The user corrects and confirms the split. Then write `03-workmap.md`, only with more than one pipeline, and one `iterations.md` per pipeline.

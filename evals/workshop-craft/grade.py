@@ -20,6 +20,7 @@ spec.loader.exec_module(fg)
 outside_blueprints_diff, record_files = fg.outside_blueprints_diff, fg.record_files
 PIPELINE_FILE = "iterations.md"
 BP = Path(".blueprints/finance-exports")
+CASE_BP = {11: Path(".blueprints/sales-sqlite")}
 SNAPSHOT_MARK = "workshop-craft-snapshot"
 SKILLS_READ = ("/skills/sttp/SKILL.md", "/sttp-software-engineering/SKILL.md", "/workshop-grill/SKILL.md")
 EVALS = {e["id"]: e for e in json.load(open(HERE / "evals.json"))["evals"]}
@@ -169,8 +170,9 @@ def grade(run, case):
     commands = (run / "outputs/commands.txt").read_text()
     repo, qs = run / "repo", questions(reply)
     tmp, base = fresh(EVALS[case]["fixture"])
-    scope, base_scope = sections(repo / BP / "02-scope.md"), sections(base / BP / "02-scope.md")
-    scope_text = (repo / BP / "02-scope.md").read_text() if (repo / BP / "02-scope.md").exists() else ""
+    blueprint = CASE_BP.get(case, BP)
+    scope, base_scope = sections(repo / blueprint / "02-scope.md"), sections(base / blueprint / "02-scope.md")
+    scope_text = (repo / blueprint / "02-scope.md").read_text() if (repo / blueprint / "02-scope.md").exists() else ""
     out = common(run, repo, base, commands)
     if case == 1:
         r = [l for l in reads(commands) if "reports/" in l]
@@ -198,11 +200,11 @@ def grade(run, case):
         low = [n for n in LABEL.findall(reply) if int(n) <= 7]
         out.append(check("New questions take numbers after Q7", qs and not low,
                          f"labels: {LABEL.findall(reply)}"))
-    if case == 5:
-        written = [p for p in ("03-workmap.md", "pipelines") if (repo / BP / p).exists()]
+    if case in (5, 11):
+        written = [p for p in ("03-workmap.md", "pipelines") if (repo / blueprint / p).exists()]
         out.append(check("No work map or pipeline written before the split is confirmed", not written,
                          f"written: {written or 'none'}"))
-        want = proposed(5)["Out of scope"]
+        want = proposed(case)["Out of scope"]
         out.append(check("Out of scope is written as approved, word for word", scope.get("Out of scope") == want,
                          f"Out of scope: {(scope.get('Out of scope') or 'absent')[:120]}"))
         out.append(check("In scope is unchanged", scope.get("In scope") == base_scope.get("In scope"),

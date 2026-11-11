@@ -9,6 +9,14 @@
 # have them: "Decided by the user on 2026-09-30 (Q3).".
 # region-done: another task, started from a session: a region filter on the monthly report, its one pipeline's
 # iterations all done and committed, in .blueprints/region-filter/, and its record committed.
+# store-intake-next: the workshop-craft fixture store-approved, whose sales are in a JSON-lines file store, partway
+# through its move to SQLite, .blueprints/sales-sqlite/: the pages, the jobs and the admin correction use SQLite,
+# and the intake, the next iteration, is the file store's last caller.
+# store-export-waits: the same repo at an earlier state of that move: the pages and the backup use SQLite, the
+# accounting export's move waits for a colleague's branch, and the next iteration, as planned, has the intake write
+# each sale to SQLite and to the file.
+# store-missed-caller: store-export-waits plus a job merged after the plan was made, jobs/stock_alert.py, which reads
+# the file store and which the blueprint never mentions.
 set -euo pipefail
 fixture=$1; dir=$2
 broken=; record=; tagged=
@@ -24,6 +32,467 @@ if [[ $fixture == research ]]; then
 We run a small Python reports app (Python 3.12). Servers install with pip only: no system packages.
 Finance wants PDF copies of two reports. Nobody on the team has picked a PDF library before.
 Region and product names are typed by sales staff in several countries.
+MD
+  exit 0
+fi
+if [[ $fixture == store-intake-next || $fixture == store-export-waits || $fixture == store-missed-caller ]]; then
+  bash "$here/../../workshop-craft/fixtures/make_fixture.sh" store-approved "$dir"
+  cd "$dir"
+  base_commit=$(git rev-parse HEAD)
+  # sub <file> <old> <new>: replaces a text the craft fixture wrote; a text that is no longer there stops the build.
+  sub() { python3 - "$@" <<'PY'
+import sys
+from pathlib import Path
+path, old, new = sys.argv[1:]
+text = Path(path).read_text()
+assert old in text, f"{path}: not found: {old}"
+Path(path).write_text(text.replace(old, new, 1))
+PY
+  }
+  cat > reports/sqlite_store.py <<'PY'
+import sqlite3
+from contextlib import closing
+from datetime import date
+from pathlib import Path
+
+from .models import Sale
+
+DB_FILE = Path("data/sales.db")
+
+
+def _connect():
+    DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(DB_FILE)
+    db.execute("CREATE TABLE IF NOT EXISTS sales (id INTEGER PRIMARY KEY, region TEXT, product TEXT, units INTEGER,"
+               " amount_cents INTEGER, sold_on TEXT)")
+    return db
+
+
+def load_sales():
+    with closing(_connect()) as db:
+        rows = db.execute("SELECT id, region, product, units, amount_cents, sold_on FROM sales ORDER BY id").fetchall()
+    return [Sale(*row[:5], date.fromisoformat(row[5])) for row in rows]
+
+
+def add_sale(region, product, units, amount_cents, sold_on):
+    """Stores a new sale under the id SQLite gives it, and returns it."""
+    with closing(_connect()) as db, db:
+        cursor = db.execute("INSERT INTO sales (region, product, units, amount_cents, sold_on) VALUES (?, ?, ?, ?, ?)",
+                            (region, product, units, amount_cents, sold_on.isoformat()))
+    return Sale(cursor.lastrowid, region, product, units, amount_cents, sold_on)
+PY
+  cat > tests/test_sqlite_store.py <<'PY'
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+from unittest import mock
+
+from reports import sqlite_store
+
+
+class SqliteStoreTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        patcher = mock.patch.object(sqlite_store, "DB_FILE", Path(self.tmp.name) / "sales.db")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.sale = sqlite_store.add_sale("North", "Widget", 3, 1234, date(2026, 8, 3))
+
+    def test_an_added_sale_is_loaded(self):
+        self.assertEqual(sqlite_store.load_sales(), [self.sale])
+
+    def test_the_second_sale_gets_the_next_id(self):
+        self.assertEqual(sqlite_store.add_sale("South", "Gadget", 1, 500, date(2026, 8, 9)).id, 2)
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+  git add -A; git commit -qm "Store, iteration 1.1: sales in SQLite"
+
+  # The readers. The file store's tests now add their own sale, and the intake has a test of its own.
+  git rm -q jobs/weekly_digest.py
+  sub reports/app.py 'from .store import load_sales' 'from .sqlite_store import load_sales'
+  sub jobs/backup.py 'from reports import store' 'from reports import sqlite_store'
+  sub jobs/backup.py 'shutil.copy(store.SALES_FILE, to / f"sales-{date.today().isoformat()}.jsonl")' \
+    'shutil.copy(sqlite_store.DB_FILE, to / f"sales-{date.today().isoformat()}.db")'
+  cat > tests/test_store.py <<'PY'
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+from unittest import mock
+
+from reports import store
+from reports.models import Sale
+
+
+class StoreTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        patcher = mock.patch.object(store, "SALES_FILE", Path(tmp.name) / "sales.jsonl")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        store.append_sale(Sale(1, "North", "Widget", 3, 1234, date(2026, 8, 3)))
+
+    def test_appended_sale_is_loaded(self):
+        self.assertEqual(store.load_sales()[0].sold_on, date(2026, 8, 3))
+
+    def test_correction_replaces_the_amount(self):
+        store.correct_sale(1, amount_cents=1000)
+        self.assertEqual(store.load_sales()[0].amount_cents, 1000)
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+  cat > tests/test_intake.py <<'PY'
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from reports import store
+from reports.intake import record_sale
+
+POSTED = {"region": "North", "product": "Widget", "units": "3", "amount_cents": "1234", "sold_on": "2026-08-03"}
+
+
+class IntakeTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        patcher = mock.patch.object(store, "SALES_FILE", Path(tmp.name) / "sales.jsonl")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_posted_sales_are_stored_under_the_next_ids(self):
+        record_sale(POSTED)
+        record_sale(POSTED)
+        self.assertEqual([sale.id for sale in store.load_sales()], [1, 2])
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+  sub tests/test_sqlite_store.py 'from reports import sqlite_store
+' 'from jobs.backup import backup
+from reports import sqlite_store
+from reports.app import handle
+'
+  sub tests/test_sqlite_store.py '
+
+if __name__' '
+    def test_a_page_gets_the_sales(self):
+        self.assertEqual(handle(lambda request: request["sales"], {}), [self.sale])
+
+    def test_backup_copies_the_database(self):
+        to = Path(self.tmp.name) / "backups"
+        backup(to)
+        self.assertEqual([copy.suffix for copy in to.iterdir()], [".db"])
+
+
+if __name__'
+  # The blueprint's scope, confirmed.
+  bp=.blueprints/sales-sqlite
+  sub $bp/02-scope.md 'Current: Out of scope proposed (Q12); then the self-check and the split.' 'Confirmed on: 2026-11-03'
+  sub $bp/02-scope.md '## Approach' '## Out of scope
+- Copying production'"'"'s sales from `data/sales.jsonl` into SQLite: ops does it once, at the release. Decided by the
+  user on 2026-11-02.
+- Changes to the accounting CSV'"'"'s columns: the accounting system imports them as they are. Decided by the user on
+  2026-11-02.
+
+## Approach'
+
+  if [[ $fixture == store-export-waits || $fixture == store-missed-caller ]]; then
+    # The accounting export still reads the file, so its test stays with the file store's.
+    sub tests/test_store.py 'from reports import store
+' 'from jobs.accounting_export import accounting_csv
+from reports import store
+'
+    sub tests/test_store.py '
+
+if __name__' '
+    def test_accounting_csv_has_the_sale(self):
+        self.assertIn("1,2026-08-03,North,Widget,3,12.34", accounting_csv())
+
+
+if __name__'
+    git add -A; git commit -qm "Readers, iterations 2.1 to 2.3: the pages and the backup read SQLite; no weekly digest"
+    cat >> $bp/00-knowledge.md <<'MD'
+- One pipeline: the SQLite store, then the store's readers, then its writers, then a cleanup that deletes the file
+  store.
+  Why: nothing in the task runs in parallel.
+  Rules out: a pipeline per user of the store.
+  Decided by the user on 2026-11-03.
+MD
+    mkdir -p $bp/pipelines/01-sales-sqlite
+    cat > $bp/pipelines/01-sales-sqlite/iterations.md <<MD
+# Pipeline 1: sales in SQLite
+
+Goal: every sale is stored and read in SQLite, and the file store is gone.
+Done when: scope 1, 2, 3, 4, 5, 6.
+Iteration size: one user of the store or one behaviour per iteration, with its test. Suggested by workshop-craft,
+confirmed by the user on 2026-11-03.
+Base: $base_commit, HEAD when the first iteration started.
+
+## Current
+
+Writers, iteration 3.1: NEXT; waits for nothing.
+
+## Status
+
+| Category   | #   | Title                      | Status  |
+|------------|-----|----------------------------|---------|
+| Store      | 1.1 | sales in SQLite            | DONE    |
+| Readers    | 2.1 | weekly digest removed      | DONE    |
+| Readers    | 2.2 | pages                      | DONE    |
+| Readers    | 2.3 | backup                     | DONE    |
+| Writers    | 3.1 | intake                     | NEXT    |
+| Writers    | 3.2 | admin correction           | PLANNED |
+| Accounting | 4.1 | accounting CSV             | BLOCKED |
+| Cleanup    | 5.1 | no more writes to the file | PLANNED |
+| Cleanup    | 5.2 | file store deleted         | PLANNED |
+
+## Blockers
+
+- Blocker 1, blocks Accounting, iteration 4.1: \`jobs/accounting_export.py\` is being rewritten on the branch
+  \`accounting-vat\`, a colleague's work; the export moves to SQLite once that branch is merged. Open.
+
+## Iterations
+
+### Store
+- Iteration 1.1: sales are stored and read in SQLite, each new sale under the id SQLite gives it
+  (\`reports/sqlite_store.py\`).
+
+### Readers
+- Iteration 2.1: the weekly digest removed (\`jobs/weekly_digest.py\`).
+- Iteration 2.2: the pages get their sales from SQLite (\`reports/app.py\`).
+- Iteration 2.3: the backup copies the SQLite database (\`jobs/backup.py\`).
+
+### Writers
+- Iteration 3.1: the intake stores each sale a till posts in SQLite, under the id SQLite gives it, and appends the
+  same sale to the file, so that the accounting CSV keeps every sale until iteration 4.1.
+- Iteration 3.2: an admin's correction changes the sale in SQLite and in the file.
+
+### Accounting
+- Iteration 4.1: the accounting CSV comes from SQLite, with the same columns (\`jobs/accounting_export.py\`).
+
+### Cleanup
+- Iteration 5.1: the intake and the admin correction no longer write to the file.
+- Iteration 5.2: the file store deleted: \`reports/store.py\` and its tests.
+MD
+    cat > $bp/pipelines/01-sales-sqlite/knowledge.md <<'MD'
+# Knowledge: pipeline 1, sales in SQLite
+
+## Facts
+
+### The SQLite store
+- `reports/sqlite_store.py` keeps the sales in `data/sales.db`: `load_sales`, and `add_sale`, which stores a new
+  sale under the id SQLite gives it and returns it.
+  Source: reports/sqlite_store.py, read 2026-11-05.
+- The tests of everything that uses SQLite are in `tests/test_sqlite_store.py`, each with a database of its own in
+  a temporary folder. The intake's test is `tests/test_intake.py`; the file store's own tests and the accounting
+  CSV's are in `tests/test_store.py`.
+  Source: tests/, read 2026-11-05.
+
+### The accounting export
+- `jobs/accounting_export.py` is being rewritten on the branch `accounting-vat`, a colleague's work that is not
+  merged yet. The export moves to SQLite after that merge, so that the two changes do not collide; until then it
+  reads the file.
+  Source: user said, 2026-11-05.
+
+## Decisions
+
+- A new sale's id comes from SQLite, not from the highest id in the store plus one.
+  Why: two tills that post at the same time must never get the same id.
+  Rules out: the intake working out the id.
+  Decided by the user on 2026-11-03.
+MD
+    if [[ $fixture == store-missed-caller ]]; then
+      cat > jobs/stock_alert.py <<'PY'
+from collections import Counter
+
+from reports.store import load_sales
+
+
+def to_restock(threshold=50):
+    """Runs every morning for the warehouse: the products that sold more units than the threshold."""
+    units = Counter()
+    for sale in load_sales():
+        units[sale.product] += sale.units
+    return sorted(product for product, sold in units.items() if sold > threshold)
+PY
+      cat > tests/test_stock_alert.py <<'PY'
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+from unittest import mock
+
+from jobs.stock_alert import to_restock
+from reports import store
+from reports.models import Sale
+
+
+class StockAlertTest(unittest.TestCase):
+    def test_a_product_sold_over_the_threshold_is_to_restock(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        patcher = mock.patch.object(store, "SALES_FILE", Path(tmp.name) / "sales.jsonl")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        store.append_sale(Sale(1, "North", "Widget", 60, 24000, date(2026, 8, 3)))
+        store.append_sale(Sale(2, "South", "Gadget", 5, 2500, date(2026, 8, 3)))
+        self.assertEqual(to_restock(), ["Widget"])
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+      git add -A; git commit -qm "Morning stock alert for the warehouse: the products to restock"
+    fi
+    exit 0
+  fi
+
+  sub jobs/accounting_export.py 'from reports.store import load_sales' 'from reports.sqlite_store import load_sales'
+  sub tests/test_sqlite_store.py 'from jobs.backup import backup
+' 'from jobs.accounting_export import accounting_csv
+from jobs.backup import backup
+'
+  sub tests/test_sqlite_store.py '
+    def test_backup_copies_the_database' '
+    def test_accounting_csv_has_the_sale(self):
+        self.assertIn("1,2026-08-03,North,Widget,3,12.34", accounting_csv())
+
+    def test_backup_copies_the_database'
+  git add -A; git commit -qm "Readers, iterations 2.1 to 2.4: the pages, the accounting CSV and the backup read SQLite; no weekly digest"
+
+  cat >> reports/sqlite_store.py <<'PY'
+
+
+def correct_sale(sale_id, units, amount_cents):
+    with closing(_connect()) as db, db:
+        db.execute("UPDATE sales SET units = ?, amount_cents = ? WHERE id = ?", (units, amount_cents, sale_id))
+PY
+  sub reports/admin_views.py 'from .store import correct_sale' 'from .sqlite_store import correct_sale'
+  sub tests/test_sqlite_store.py 'from reports import sqlite_store
+' 'from reports import sqlite_store
+from reports.admin_views import correct_sale_view
+'
+  sub tests/test_sqlite_store.py '
+
+if __name__' '
+    def test_a_correction_changes_the_sale_in_sqlite(self):
+        correct_sale_view({"user": {"roles": ["admin"]}, "form": {"units": "2", "amount_cents": "1000"}}, 1)
+        self.assertEqual(sqlite_store.load_sales()[0].amount_cents, 1000)
+
+
+if __name__'
+  git add -A; git commit -qm "Writers, iteration 3.1: an admin's correction changes the sale in SQLite"
+
+  # The blueprint, finished, with one more goal, the sales list by month.
+  sub $bp/02-scope.md 'weekly jobs all go through the file store, `reports/store.py`.' \
+    'weekly jobs all go through the file store, `reports/store.py`. With the sales in SQLite, the admin sales list,
+which shows every sale on one page, will show one month at a time.'
+  sub $bp/02-scope.md 'Every sale is stored and read in SQLite, and the file store is gone.' \
+    'Every sale is stored and read in SQLite, the admin sales list shows one month at a time, and the file store is
+gone.'
+  sub $bp/02-scope.md '6. `reports/store.py` is deleted, and nothing reads or writes `data/sales.jsonl`.' \
+    '6. `reports/store.py` is deleted, and nothing reads or writes `data/sales.jsonl`.
+7. The admin sales list shows one month of sales: the newest month that has sales, when none is picked.'
+  sub $bp/02-scope.md '- The file store, `reports/store.py`, deleted.' '- The file store, `reports/store.py`, deleted.
+- The admin sales list by month.'
+  cat >> $bp/00-knowledge.md <<'MD'
+- The admin sales list shows one month of sales at a time: the month picked in its address, or the newest month
+  that has sales.
+  Why: the list holds every sale on one page and takes seconds to open; SQLite can return one month.
+  Rules out: a fixed number of sales per page.
+  Decided by the user on 2026-11-02.
+- One pipeline, and the store's readers move to SQLite before its writers.
+  Why: no sale is ever written to both the file and SQLite.
+  Rules out: writing each sale to both stores until the readers have moved.
+  Known cost: until the intake moves, a sale a till posts is missing from the pages, the accounting CSV and the
+  backup. Nothing ships before the whole task is done, so nobody sees it.
+  Decided by the user on 2026-11-03.
+MD
+  mkdir -p $bp/pipelines/01-sales-sqlite
+  cat > $bp/pipelines/01-sales-sqlite/iterations.md <<MD
+# Pipeline 1: sales in SQLite
+
+Goal: every sale is stored and read in SQLite, the admin sales list shows one month at a time, and the file store
+is gone.
+Done when: scope 1, 2, 3, 4, 5, 6, 7.
+Iteration size: one user of the store or one behaviour per iteration, with its test. Suggested by workshop-craft,
+confirmed by the user on 2026-11-03.
+Base: $base_commit, HEAD when the first iteration started.
+
+## Current
+
+Writers, iteration 3.2: NEXT; waits for nothing.
+
+## Status
+
+| Category       | #   | Title                       | Status  |
+|----------------|-----|-----------------------------|---------|
+| Store          | 1.1 | sales in SQLite             | DONE    |
+| Readers        | 2.1 | weekly digest removed       | DONE    |
+| Readers        | 2.2 | pages                       | DONE    |
+| Readers        | 2.3 | accounting CSV              | DONE    |
+| Readers        | 2.4 | backup                      | DONE    |
+| Writers        | 3.1 | admin correction            | DONE    |
+| Writers        | 3.2 | intake                      | NEXT    |
+| Sales by month | 4.1 | a month's sales from SQLite | PLANNED |
+| Sales by month | 4.2 | sales list by month         | PLANNED |
+| Cleanup        | 5.1 | file store deleted          | PLANNED |
+
+## Iterations
+
+### Store
+- Iteration 1.1: sales are stored and read in SQLite, each new sale under the id SQLite gives it
+  (\`reports/sqlite_store.py\`).
+
+### Readers
+- Iteration 2.1: the weekly digest removed (\`jobs/weekly_digest.py\`).
+- Iteration 2.2: the pages get their sales from SQLite (\`reports/app.py\`).
+- Iteration 2.3: the accounting CSV comes from SQLite, with the same columns (\`jobs/accounting_export.py\`).
+- Iteration 2.4: the backup copies the SQLite database (\`jobs/backup.py\`).
+
+### Writers
+- Iteration 3.1: an admin's correction changes the sale in SQLite (\`reports/admin_views.py\`).
+- Iteration 3.2: the intake stores each sale a till posts in SQLite, under the id SQLite gives it.
+
+### Sales by month
+- Iteration 4.1: one month's sales from SQLite, and the newest month that has sales.
+- Iteration 4.2: the admin sales list shows one month of sales: the month picked in its address, or the newest
+  month that has sales.
+
+### Cleanup
+- Iteration 5.1: the file store deleted: \`reports/store.py\` and its tests.
+MD
+  cat > $bp/pipelines/01-sales-sqlite/knowledge.md <<'MD'
+# Knowledge: pipeline 1, sales in SQLite
+
+## Facts
+
+### The SQLite store
+- `reports/sqlite_store.py` keeps the sales in `data/sales.db`: `load_sales`, `add_sale`, which stores a new sale
+  under the id SQLite gives it and returns it, and `correct_sale`.
+  Source: reports/sqlite_store.py, read 2026-11-05.
+- The tests of everything that uses SQLite are in `tests/test_sqlite_store.py`, each with a database of its own in
+  a temporary folder. The intake's test is `tests/test_intake.py`, and the file store's own tests are
+  `tests/test_store.py`.
+  Source: tests/, read 2026-11-05.
+
+## Decisions
+
+- A new sale's id comes from SQLite, not from the highest id in the store plus one.
+  Why: two tills that post at the same time must never get the same id.
+  Rules out: the intake working out the id.
+  Decided by the user on 2026-11-03.
 MD
   exit 0
 fi
