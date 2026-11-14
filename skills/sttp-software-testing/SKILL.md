@@ -30,6 +30,12 @@ The dependency decides how a test crosses the seam:
 
 Test names use the project's own terms: its glossary, ADRs or docs, and under workshop-forge the blueprint's knowledge files.
 
+## Where the cases come from
+
+The cases come from what is already known about the real data: earlier runs and their counts, bug reports, logs, the records in `docs/tars-reports/`, the user's examples in the conversation, and under workshop-forge the blueprint's recons and knowledge files. Each path the change touches that this data reaches gets its own slice, even when the change on that path is one shared call; values that take the same path are one case, not one test each. An invented case tests what the agent expects; a case from a real run tests what the data holds.
+
+Code the change calls without changing it, that this data reaches and no test covers, gets its test in the same change, because the change's result goes through it. Its code already works, so the test cannot go red first: prove it as "Proving a test without a red step" says.
+
 ## The loop
 
 1. Write one test for one behaviour. Run it and see it fail.

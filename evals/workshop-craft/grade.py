@@ -136,12 +136,12 @@ def pipeline_checks(repo):
         if gone:
             missing[f.parent.name] = gone
         st = {(c, n): s for c, n, s in
-              re.findall(r"^\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*\|[^|]*\|\s*([A-Z-]+)\s*\|\s*$", t, re.M)}
+              re.findall(rf"^\|\s*([^|]+?)\s*\|\s*({fg.NAME})\s*\|[^|]*\|\s*([A-Z-]+)\s*\|\s*$", t, re.M)}
         category, its = "", []
         for line in t.splitlines():
             if line.startswith("### "):
                 category = line[4:].strip()
-            elif m := re.match(r"- Iteration (\d+(?:\.\d+)?)", line):
+            elif m := re.match(rf"- Iteration ({fg.NAME})", line):
                 its.append((category, m.group(1)))
         not_prelim += [f"{f.parent.name}: {c}, iteration {n}: {st.get((c, n), 'no row')}" for c, n in its
                        if st.get((c, n)) not in ("PLANNED", "BLOCKED")] or ([] if its else [f"{f.parent.name}: no iteration"])

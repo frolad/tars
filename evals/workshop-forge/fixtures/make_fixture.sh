@@ -17,12 +17,19 @@
 # each sale to SQLite and to the file.
 # store-missed-caller: store-export-waits plus a job merged after the plan was made, jobs/stock_alert.py, which reads
 # the file store and which the blueprint never mentions.
+# writer-moved: inline-csv after its sales list iteration was split, with names of the lettered form: 3.1 is SPLIT,
+# its part 3.1.a, the CSV writer moved out of the monthly view, is done and committed, and its part 3.1.b, the sales
+# list CSV, is next. The moved writer still writes the monthly report's header and columns only.
+# access-split: ready after its first iteration, the release point for pipeline 2, was split the same way: 1.1 is
+# SPLIT, its part 1.1.a, the finance role, is done and committed, and its part 1.1.b, the access rule, is next.
 set -euo pipefail
 fixture=$1; dir=$2
-broken=; record=; tagged=
+broken=; record=; tagged=; moved=; split=
 if [[ $fixture == broken-helper ]]; then broken=1; fixture=csv-done; fi
 if [[ $fixture == record ]]; then record=1; fixture=access-done; fi
 if [[ $fixture == tagged ]]; then tagged=1; fixture=access-done; fi
+if [[ $fixture == writer-moved ]]; then moved=1; fixture=inline-csv; fi
+if [[ $fixture == access-split ]]; then split=1; fixture=ready; fi
 here=$(cd "$(dirname "$0")" && pwd)
 if [[ $fixture == research ]]; then
   rm -rf "$dir"; mkdir -p "$dir"; cd "$dir"
@@ -867,7 +874,25 @@ MD
 fi
 
 # Code states, each a real commit, so the tests pass at HEAD.
-if [[ $fixture != ready ]]; then
+if [[ -n $split ]]; then
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("reports/auth.py")
+p.write_text(p.read_text().replace('ROLES = {"staff", "admin"}', 'ROLES = {"staff", "admin", "finance"}'))
+p = Path("tests/test_auth.py"); t = p.read_text()
+t = t.replace("from reports.auth import Forbidden, require_role\n", "from reports.auth import ROLES, Forbidden, require_role\n")
+t = t.replace('''
+
+if __name__ == "__main__":''', '''
+    def test_finance_is_a_known_role(self):
+        self.assertIn("finance", ROLES)
+
+
+if __name__ == "__main__":''')
+p.write_text(t)
+PY
+  git add -A; git commit -qm "Access, iteration 1.1.a: finance is a known role"
+elif [[ $fixture != ready ]]; then
   python3 - <<'PY'
 from pathlib import Path
 p = Path("reports/auth.py"); t = p.read_text()
@@ -1006,6 +1031,39 @@ if __name__ == "__main__":''')
 p.write_text(t)
 PY
   git add -A; git commit -qm "Monthly report, iteration 2.1: the monthly report as a CSV download"
+fi
+
+# writer-moved: the lines that build the monthly CSV, moved as they were into a function of reports/export.py.
+if [[ -n $moved ]]; then
+  cat >> reports/export.py <<'PY'
+
+
+def monthly_csv(rows):
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Region", "Product", "Units", "Amount (EUR)"])
+    for r in rows:
+        writer.writerow([r["region"], r["product"], r["units"], format_eur(r["amount_cents"])])
+    return out.getvalue()
+PY
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("reports/export.py")
+p.write_text(p.read_text().replace("import json\n", "import csv\nimport io\nimport json\n", 1))
+p = Path("reports/views.py"); t = p.read_text()
+t = t.replace("import csv\nimport io\n\n", "")
+t = t.replace("from .export import to_json\nfrom .money import format_eur\n", "from .export import monthly_csv, to_json\n")
+t = t.replace('''    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Region", "Product", "Units", "Amount (EUR)"])
+    for r in rows:
+        writer.writerow([r["region"], r["product"], r["units"], format_eur(r["amount_cents"])])
+    filename = f"sales-{year}-{month:02d}.csv"
+    return response(out.getvalue(), "text/csv",''', '''    filename = f"sales-{year}-{month:02d}.csv"
+    return response(monthly_csv(rows), "text/csv",''')
+p.write_text(t)
+PY
+  git add -A; git commit -qm "Sales list, iteration 3.1.a: the CSV writer moved to reports/export.py"
 fi
 
 # pipeline-done: Sales list, iterations 1 and 2, done and left uncommitted; the user committed partway through.
@@ -1334,6 +1392,26 @@ case $fixture in
     [[ -n $broken ]] && sales="${sales%.}; its test takes the sales from \`sample_sales()\` in tests/helpers.py."
     ;;
 esac
+if [[ -n $moved ]]; then
+  current="Sales list, iteration 3.1.b: next; waits for nothing."
+  sales="- Iteration 3.1, split: the admin sales list as a CSV download for finance and admins, through the same CSV
+  writer as the monthly report: every sale the page shows. Split into iterations 3.1.a and 3.1.b: the writer was
+  inside the monthly view and had to move first.
+- Iteration 3.1.a, done, split from iteration 3.1: the CSV writer moved out of the monthly view, with the monthly
+  CSV unchanged (reports/export.py).
+- Iteration 3.1.b, next, split from iteration 3.1: the admin sales list as a CSV download for finance and admins,
+  through the same CSV writer as the monthly report: every sale the page shows."
+fi
+if [[ -n $split ]]; then
+  current="Access, iteration 1.1.b: next; waits for nothing."
+  access="- Iteration 1.1, split: a finance role, and \`require_role\` lets a view through for any of several
+  roles: \`require_role(\"finance\", \"admin\")\` admits finance and admins and refuses everyone else with
+  \`Forbidden\`. Release point for pipeline 2. Split into iterations 1.1.a and 1.1.b: the role had to be known
+  first.
+- Iteration 1.1.a, done, split from iteration 1.1: \`finance\` is a known role (reports/auth.py).
+- Iteration 1.1.b, next, split from iteration 1.1: \`require_role\` lets a view through for any of several roles:
+  \`require_role(\"finance\", \"admin\")\` admits finance and admins and refuses everyone else with \`Forbidden\`."
+fi
 
 cat > $bp/pipelines/01-csv-downloads/iterations.md <<MD
 # Pipeline 1: CSV downloads

@@ -31,7 +31,8 @@ Critical path: <the chain that sets the end date>.
 - Each release point has a Hands over line.
 - The work map owns the waits. The releasing pipeline's `iterations.md` repeats the edge in its header
   (`Releases:`), so finishing that iteration tells the user which pipeline can start.
-- When a release-point iteration splits or is dropped, the edge is updated in the same turn.
+- A release-point iteration that splits stays the release point: it is done when all its parts are, so the edge
+  stays as written. When a release-point iteration is dropped, the edge is updated in the same turn.
 - A wave is a set of pipelines that can run at the same time. Waves and the critical path are derived from the
   waits, rewritten whenever a wait changes, and never edited by hand.
 - Structural changes are logged in the scope's Changes, not here.

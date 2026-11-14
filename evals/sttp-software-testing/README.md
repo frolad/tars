@@ -1,10 +1,12 @@
 # sttp-software-testing tests
 
-Three cases for the skill-creator loop, in `evals.json`: a new write path (`rename_note`, red first, one
+Four cases for the skill-creator loop, in `evals.json`: a new write path (`rename_note`, red first, one
 slice at a time), proving a test catches a bug (the double-counted discount in `total()`, with the user's
-unstaged work and staged `README.md` left alone), and a new seam (retry in `fetch_rates()`, where a test needs
-a fake: ask before editing). Not a `claude plugin eval` suite: that one is the `prompt.md` cases next to this
-folder.
+unstaged work and staged `README.md` left alone), a new seam (retry in `fetch_rates()`, where a test needs
+a fake: ask before editing), and cases from a recon (citations in `fix_document()`: a test for each path the
+dry run's notes show, at the top level and inside a note, and tests for the untouched `fix_citation`, proven
+by a break; `grade.py` breaks each of its paths in a copy to see a test fail). Not a `claude plugin eval`
+suite: that one is the `prompt.md` cases next to this folder.
 
 - `fixtures/make_fixture.sh <fixture> <dir>` builds the repo a case runs in, in the state the user left it
   (one reviewed change staged; for the cart case, unstaged work in `cart.py` and `shipping.py`). It also has

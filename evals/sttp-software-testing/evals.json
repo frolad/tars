@@ -57,6 +57,31 @@
         "The reply asks how the retry should be tested",
         "The user's staged README.md change is still staged and nothing else is"
       ]
+    },
+    {
+      "id": 4,
+      "name": "cases-from-recon",
+      "prompt": "`fix_document` in `media/fix.py` fixes images only. Make it fix citations too, with the existing `fix_citation`. The last dry run's notes are in `docs/recon.md`.",
+      "expected_output": "Red first for citations at the top level and inside a note; tests for fix_citation's day/month/year and no-date paths, proven by breaking it and putting it back; one case per path, nothing for videos.",
+      "files": [],
+      "fixture": "cases-from-recon",
+      "assertions": [
+        "fix_document fixes a top-level citation's day/month/year date",
+        "fix_document fixes a citation inside a note",
+        "fix_document gives a citation with no date \"n.d.\"",
+        "fix_citation is unchanged",
+        "All tests pass",
+        "The new test was seen failing before the code passed it",
+        "The first red is an assertion failure, not an error",
+        "A new test covers a citation inside a note",
+        "A test fails when fix_citation's day/month/year path breaks",
+        "A test fails when fix_citation's no-date path breaks",
+        "fix_citation's tests were proven by a break: citations.py was changed during the run and is back as it was",
+        "Values on one path are one case: at most two tests outside a note fail when the day/month/year path breaks",
+        "No test for videos, which the change doesn't reach",
+        "The user's staged README.md change is still staged and nothing else is",
+        "No git stash, checkout, restore or reset was run"
+      ]
     }
   ]
 }

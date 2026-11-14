@@ -1,6 +1,6 @@
 # workshop-forge tests
 
-Eighteen cases for the skill-creator loop, in `evals.json`: `/workshop-forge` alone picking and running the first
+Twenty-two cases for the skill-creator loop, in `evals.json`: `/workshop-forge` alone picking and running the first
 iteration, a decision in the mini grill, "continue", a breaking point, a reorganization, several fixes at the
 default size, starting from a session without a blueprint, whose record file keeps out a customer's name and a home
 path from the session, research started from a session outside git, the end of a pipeline, whose record file says
@@ -18,7 +18,14 @@ instead, and say what stops working and until when, for the user to confirm, the
 keeping that write: the iteration builds it without asking again, and its report must say that a later iteration
 removes that code, name the iteration, and say which tests go with it, and the same "continue" in a repo where a job
 the plan never mentions still reads the old store: before any code, the reply must name that job and ask the user
-what to do with it.
+what to do with it, and four on the name and the place of an iteration added to a plan that is running: a fix the
+user asks for in the work of the iteration just finished, before the next planned one, which must be named after
+the finished one, 3.1.a, in a row right after it, work the next planned iteration needs first, which must split that
+iteration, its row kept with the status SPLIT and its parts, 3.1.a and 3.1.b, in the rows under it, a second find
+inside an iteration already split, which must split the part not started the same way, 3.1.b.a and 3.1.b.b, and the
+last part of a split iteration that is a release point, after which the reply must say that the other pipeline can
+start, with the lines that name the release point left as written. In each of the four, the names of the status
+table must read in order from top to bottom, and no row the plan had may get another name.
 Not a `claude plugin eval` suite: that one is the `prompt.md` cases next to this folder.
 
 - `fixtures/make_fixture.sh <fixture> <dir>` builds the repo a case runs in, by real commits, so its tests pass at
@@ -46,6 +53,12 @@ Not a `claude plugin eval` suite: that one is the `prompt.md` cases next to this
   iteration, as planned, has the intake write each sale to SQLite and to the file. Two cases run on it.
   `store-missed-caller` is `store-export-waits` plus one commit, made after the plan: `jobs/stock_alert.py`, a job
   that reads the sales from the file store and that the blueprint never mentions.
+  `writer-moved` and `access-split` hold plans with names of the lettered form. `writer-moved` is `inline-csv` after
+  its sales list iteration was split: 3.1 is SPLIT, its part 3.1.a, the CSV writer moved out of the monthly view, is
+  done and committed, and its part 3.1.b, the sales list CSV, is next; the moved writer still writes the monthly
+  report's header and columns only. `access-split` is `ready` after its first iteration, the release point for
+  pipeline 2, was split: 1.1 is SPLIT, its part 1.1.a, the finance role, is done and committed, and its part 1.1.b,
+  the access rule, is next.
   `research` is a folder outside git with a `notes.md`.
 - Each run is a subagent working in the fixture repo, told not to use the Skill tool, to read
   `skills/sttp/SKILL.md`, `skills/sttp-software-engineering/SKILL.md`, `skills/workshop-grill/SKILL.md`,

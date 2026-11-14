@@ -1,8 +1,9 @@
 // The TARS mod: the parts of TARS that run inside Claude Code. hooks/sttp.py, the settings hooks Codex runs too,
 // reads what these commands write, so both tools keep one state.
 
-// A status table row: | Category | # | Title | Status |
-const ROW = /^\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*\|\s*([^|]*?)\s*\|\s*([A-Z-]+)\s*\|\s*$/gm
+// A status table row: | Category | # | Title | Status |. An iteration's name is a number, 6 or 6.7, and letters after
+// it for one added later: 6.7.a, 6.8.b.a.
+const ROW = /^\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?(?:\.[a-z]+)*)\s*\|\s*([^|]*?)\s*\|\s*([A-Z-]+)\s*\|\s*$/gm
 const OPEN = ["CURRENT", "NEXT", "PLANNED", "BLOCKED"]
 const PANE = "sttp-pipeline"
 // The pane's mark per status; SKIPPED, WONT-DO, REVERTED and SPLIT rows get "–", dimmed, with their status.

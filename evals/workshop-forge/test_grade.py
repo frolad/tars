@@ -13,6 +13,36 @@ spec.loader.exec_module(grader)
 COMMIT = "The reply suggests a commit"
 STORED = "A sale a till posts is stored in SQLite, and not in the file"
 NEXT = "In iterations.md, the iteration that is NEXT deletes the file store"
+FIXES = "iterations.md has the header fix as a done iteration and the other two problems as iterations"
+MOVED = "Writers, iteration 3.2 is done in iterations.md and Current moved on"
+CSV_PLAN = ".blueprints/finance-exports/pipelines/01-csv-downloads/iterations.md"
+IN_ORDER = "The names in the status table read in order from top to bottom"
+PLACED = "The status table has one new row, right after Writers, iteration 3.1 and before Writers, iteration 3.2"
+NAMED = "The new row is named after the iteration the fix came out of: 3.1.a"
+ROW_DONE = "The new row is DONE, and the iteration has its line under Writers"
+KEPT_19 = "Every row the plan had is still there under its name, and Writers, iteration 3.2 is not started"
+SPLIT_31 = "Sales list, iteration 3.1 keeps its row and its name, with the status SPLIT"
+PARTS_31 = "The parts of Sales list, iteration 3.1 are the rows right under it, named 3.1.a, 3.1.b and so on down the table"
+KEPT_20 = "Every row the plan had is still there under its name, and Sales list, iteration 3.2 is not started"
+SPLIT_31B = "Sales list, iteration 3.1.b keeps its row and its name, with the status SPLIT"
+PARTS_31B = ("The parts of Sales list, iteration 3.1.b are the rows right under it, named 3.1.b.a, 3.1.b.b and so on down "
+             "the table")
+KEPT_21 = ("Every row the plan had is still there under its name, with Sales list, iteration 3.1 still SPLIT, 3.1.a "
+           "still DONE and 3.2 not started")
+DONE_11B = "Access, iteration 1.1.b is done in iterations.md and Current moved on"
+SPLIT_11 = "Access, iteration 1.1 keeps its row and its name, with the status SPLIT"
+RELEASE_LINES = "The Releases line and the work map's wait still name Access, iteration 1.1, and not its part 1.1.b"
+STARTS = "The reply says pipeline 2 can start"
+ROW_31 = "| Writers        | 3.1 | admin correction            | DONE    |\n"
+ROW_32 = "| Writers        | 3.2 | intake                      | NEXT    |\n"
+FIX_ROW = "| Writers        | {} | a missing sale's correction | DONE    |\n"
+LINE_32 = "- Iteration 3.2: the intake stores"
+FIX_LINE = "- Iteration {}, spawned by iteration 3.1: a correction of a sale that does not exist raises `LookupError`.\n"
+SALES_31 = "| Sales list | 3.1 | sales list CSV | PLANNED |\n"
+SALES_31B = "| Sales list | 3.1.b | sales list CSV | PLANNED |\n"
+ACCESS_11B_DONE = [("| Access | 1.1.b | several roles pass | PLANNED |", "| Access | 1.1.b | several roles pass | DONE |"),
+                   ("Access, iteration 1.1.b: PLANNED, the next to run; waits for nothing.",
+                    'Monthly report, iteration 2.1: NEXT; waiting on the user\'s "continue".')]
 PLAN = ".blueprints/sales-sqlite/pipelines/01-sales-sqlite/iterations.md"
 WAITS = "Writers, iteration 3.1 is not done in iterations.md and Current says the pipeline waits on the user"
 UNCHANGED = "No file outside .blueprints changed but the TARS Blueprint Record"
@@ -72,6 +102,90 @@ def plan_with(*changes):
     return change
 
 
+def changed(plan, *changes):
+    """Changes a fixture's plan file: each (old, new) text replaced."""
+    def change(repo):
+        text = (repo / plan).read_text()
+        for old, new in changes:
+            assert old in text, old
+            text = text.replace(old, new)
+        (repo / plan).write_text(text)
+    return change
+
+
+class AddedIterations(unittest.TestCase):
+    """The checks on the name and the place of an iteration added to a plan."""
+
+    def checks(self, case, names, *changes, plan=CSV_PLAN, reply=""):
+        got = graded(case, reply, changed(plan, *changes))
+        return [got.get(name) for name in names]
+
+    def test_a_fix_named_after_the_iteration_it_came_out_of_and_put_after_it(self):
+        got = self.checks(19, (PLACED, NAMED, ROW_DONE, IN_ORDER, KEPT_19), (ROW_31, ROW_31 + FIX_ROW.format("3.1.a")),
+                          (LINE_32, FIX_LINE.format("3.1.a") + LINE_32), plan=PLAN)
+        self.assertEqual(got, [True, True, True, True, True])
+
+    def test_a_fix_under_the_next_free_number_is_not_named_after_it_and_reads_out_of_order(self):
+        got = self.checks(19, (PLACED, NAMED, IN_ORDER), (ROW_31, ROW_31 + FIX_ROW.format("3.3")),
+                          (LINE_32, FIX_LINE.format("3.3") + LINE_32), plan=PLAN)
+        self.assertEqual(got, [True, False, False])
+
+    def test_a_fix_put_at_the_end_of_its_category_is_not_where_it_runs(self):
+        got = self.checks(19, (PLACED, NAMED, IN_ORDER), (ROW_32, ROW_32 + FIX_ROW.format("3.3")),
+                          (LINE_32, FIX_LINE.format("3.3") + LINE_32), plan=PLAN)
+        self.assertEqual(got, [False, False, True])
+
+    def test_a_fix_that_takes_the_next_iterations_name_leaves_a_row_of_the_plan_out(self):
+        got = self.checks(19, (KEPT_19,), (ROW_32, FIX_ROW.format("3.2") + ROW_32.replace("3.2", "3.3")), plan=PLAN)
+        self.assertEqual(got, [False])
+
+    def test_an_iteration_split_with_its_parts_under_it(self):
+        got = self.checks(20, (SPLIT_31, PARTS_31, IN_ORDER, KEPT_20),
+                          (SALES_31, "| Sales list | 3.1 | sales list CSV | SPLIT |\n"
+                                     "| Sales list | 3.1.a | CSV writer moved | DONE |\n"
+                                     "| Sales list | 3.1.b | sales list CSV | NEXT |\n"))
+        self.assertEqual(got, [True, True, True, True])
+
+    def test_work_put_before_the_iteration_under_the_next_free_number_is_no_split(self):
+        got = self.checks(20, (SPLIT_31, PARTS_31, IN_ORDER, KEPT_20),
+                          (SALES_31, "| Sales list | 3.3 | CSV writer moved | DONE |\n" + SALES_31))
+        self.assertEqual(got, [False, False, False, True])
+
+    def test_parts_under_the_next_free_numbers_are_not_named_under_the_split_iteration(self):
+        got = self.checks(20, (SPLIT_31, PARTS_31, IN_ORDER),
+                          (SALES_31, "| Sales list | 3.1 | sales list CSV | SPLIT |\n"
+                                     "| Sales list | 3.3 | CSV writer moved | DONE |\n"
+                                     "| Sales list | 3.4 | sales list CSV | NEXT |\n"))
+        self.assertEqual(got, [True, False, False])
+
+    def test_a_part_split_with_its_own_parts_under_it(self):
+        got = self.checks(21, (SPLIT_31B, PARTS_31B, IN_ORDER, KEPT_21),
+                          (SALES_31B, "| Sales list | 3.1.b | sales list CSV | SPLIT |\n"
+                                      "| Sales list | 3.1.b.a | writer takes the columns | DONE |\n"
+                                      "| Sales list | 3.1.b.b | sales list CSV | NEXT |\n"))
+        self.assertEqual(got, [True, True, True, True])
+
+    def test_a_new_letter_put_before_the_part_is_no_split_and_reads_out_of_order(self):
+        got = self.checks(21, (SPLIT_31B, PARTS_31B, IN_ORDER, KEPT_21),
+                          (SALES_31B, "| Sales list | 3.1.c | writer takes the columns | DONE |\n" + SALES_31B))
+        self.assertEqual(got, [False, False, False, True])
+
+    def test_a_release_point_split_and_left_as_written_once_its_last_part_is_done(self):
+        got = self.checks(22, (DONE_11B, SPLIT_11, RELEASE_LINES, STARTS, IN_ORDER), *ACCESS_11B_DONE,
+                          reply="Access, iteration 1.1.b is done.\n\nPipeline 2, PDF downloads, can start now.")
+        self.assertEqual(got, [True, True, True, True, True])
+
+    def test_a_split_release_point_marked_done_does_not_keep_its_status(self):
+        got = self.checks(22, (SPLIT_11,), *ACCESS_11B_DONE,
+                          ("| Access | 1.1 | finance role | SPLIT |", "| Access | 1.1 | finance role | DONE |"))
+        self.assertEqual(got, [False])
+
+    def test_a_releases_line_rewritten_to_name_the_last_part_is_not_as_written(self):
+        got = self.checks(22, (RELEASE_LINES,), *ACCESS_11B_DONE,
+                          ("when Access, iteration 1.1 is done.", "when Access, iteration 1.1.b is done."))
+        self.assertEqual(got, [False])
+
+
 class Grade(unittest.TestCase):
     def test_a_commit_asked_for_before_the_review_is_a_suggestion(self):
         reply = "Before the review, commit the pipeline's work, because some review skills read only commits."
@@ -94,6 +208,32 @@ class Grade(unittest.TestCase):
             ("\n### Sales by month", "- Iteration 3.3, spawned by iteration 3.2: `reports/store.py` and "
                                      "`tests/test_store.py` removed.\n\n### Sales by month"))
         self.assertTrue(graded(15, "", change).get(NEXT))
+
+    def test_a_new_iteration_with_a_lettered_name_is_read_with_its_own_line(self):
+        change = plan_with(
+            ("| Sales by month | 4.1 |", "| Writers        | 3.2.a | cleanup                   | NEXT    |\n| Sales by month | 4.1 |"),
+            ("\n### Sales by month", "- Iteration 3.2.a, spawned by iteration 3.2: `reports/store.py` and "
+                                     "`tests/test_store.py` removed.\n\n### Sales by month"))
+        self.assertTrue(graded(15, "", change).get(NEXT))
+
+    def test_a_fix_with_a_lettered_name_whose_row_is_done_is_a_done_iteration(self):
+        def change(repo):
+            plan = repo / grader.P1 / "iterations.md"
+            text = plan.read_text()
+            for old, new in [("| Sales list | 3.1 |", "| Monthly report | 2.1.a | header | DONE |\n"
+                                                      "| Monthly report | 2.1.b | file name | NEXT |\n"
+                                                      "| Monthly report | 2.1.c | download | PLANNED |\n"
+                                                      "| Sales list | 3.1 |"),
+                             ("\n### Sales list", "- Iteration 2.1.a, spawned by iteration 2.1: the header says Amount "
+                                                  "(EUR) (reports/export.py).\n"
+                                                  "- Iteration 2.1.b, spawned by iteration 2.1: the file name has a "
+                                                  "two-digit month.\n"
+                                                  "- Iteration 2.1.c, spawned by iteration 2.1: the browser saves the "
+                                                  "file.\n\n### Sales list")]:
+                assert old in text, old
+                text = text.replace(old, new)
+            plan.write_text(text)
+        self.assertTrue(graded(6, "", change).get(FIXES))
 
     def test_the_sales_list_by_month_marked_next_is_not_the_delete(self):
         change = plan_with(("| a month's sales from SQLite | PLANNED |", "| a month's sales from SQLite | NEXT    |"))
@@ -118,6 +258,11 @@ class Grade(unittest.TestCase):
                 plan = plan.replace(old, new)
             (repo / PLAN).write_text(plan)
         self.assertIs(graded(16, "", change).get(WAITS), False)
+
+    def test_a_current_line_on_an_iteration_named_after_the_done_one_has_moved_on(self):
+        change = plan_with(("Writers, iteration 3.2: NEXT; waits for nothing.",
+                            'Writers, iteration 3.2.a: NEXT; waiting on the user\'s "continue".'))
+        self.assertTrue(graded(15, "", change).get(MOVED))
 
     def test_the_write_to_both_stores_built_before_the_pick_is_a_file_changed(self):
         def change(repo):

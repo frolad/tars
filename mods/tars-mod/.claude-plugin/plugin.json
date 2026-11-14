@@ -1,6 +1,6 @@
 {
   "name": "tars-mod",
-  "version": "0.7.0",
+  "version": "0.7.3",
   "description": "The TARS mod for Claude Code: the parts of TARS that run inside Claude Code. Optional; the tars plugin works without it.",
   "author": {
     "name": "frolad",

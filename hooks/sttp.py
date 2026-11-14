@@ -28,8 +28,10 @@ NOTICE = re.compile(r"<task-notification>|<agent-message\b|\[SYSTEM NOTIFICATION
 GIT_STEP = re.compile(r"\bgit((?:\s+(?:-[Cc]\s+\S+|--?[\w-]+(?:=\S+)?))*)\s+(add|commit|push|tag|stash|reset|restore)\b"
                       r"([^;&|\n]*)")
 FORGE_ARGS = re.compile(r"^[/$](?:tars:)?workshop-forge(?=\s|$)(?:\s+([^\s,;]+))?(?:\s+([^\s,;]+))?", re.I)
-# A status table row of an iteration not finished: | Category | # | Title | Status |
-UNFINISHED = re.compile(r"^\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*\|[^|]*\|\s*(PLANNED|CURRENT|NEXT|BLOCKED)\s*\|\s*$", re.M)
+# A status table row of an iteration not finished: | Category | # | Title | Status |. An iteration's name is a
+# number, 6 or 6.7, and letters after it for one added later: 6.7.a, 6.8.b.a.
+UNFINISHED = re.compile(r"^\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?(?:\.[a-z]+)*)\s*\|[^|]*\|\s*(PLANNED|CURRENT|NEXT|BLOCKED)"
+                        r"\s*\|\s*$", re.M)
 # The words in the user's latest message that ask for each step (Codex, which cannot ask from a hook).
 GIT_WORDS = {"add": r"\b(?:stag|add)\w*", "commit": r"\bcommit\w*", "push": r"\bpush\w*", "tag": r"\btag\w*",
              "stash": r"\bstash\w*", "reset": r"\b(?:reset|unstag)\w*", "restore --staged": r"\b(?:unstag|restor)\w*"}
@@ -370,7 +372,7 @@ def iteration_line(text, category, number):
             lines.append(line)
         elif lines:
             break
-        elif inside and re.match(rf"- Iteration {re.escape(number)}(?!\.?\d)", line):
+        elif inside and re.match(rf"- Iteration {re.escape(number)}(?!\.?[\da-z])", line):
             lines.append(line)
     return "\n".join(lines)
 

@@ -27,6 +27,8 @@ this folder.
   also fails on a TARS Blueprint Record, since workshop-craft writes none: the files under `docs/tars-reports/<name>/`
   for a blueprint `.blueprints/<name>/`, a rule it takes from `../workshop-forge/grade.py`. The name of the pipeline state file is
   `PIPELINE_FILE` in `grade.py`.
+- `test_grade.py` checks `grade.py` itself on runs built from the fixtures, such as a plan with an iteration named
+  1.1.a: `python3 -m unittest discover -s evals/workshop-craft`.
 
 Results go in a workspace outside the repo, `<workspace>/iteration-N/eval-<id>-<name>/<config>/run-N/`, with the
 fixture repo in `run-N/repo/`.

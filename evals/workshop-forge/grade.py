@@ -27,6 +27,8 @@ DEPENDENCY_FILES = ("requirements.txt", "requirements-dev.txt", "pyproject.toml"
                     "environment.yml")
 EVALS = {e["id"]: e for e in json.load(open(HERE / "evals.json"))["evals"]}
 ENV = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+# An iteration's name: a number, 6 or 6.7, and letters after it for one added later: 6.7.a, 6.8.b.a.
+NAME = r"\d+(?:\.\d+)?(?:\.[a-z]+)*"
 
 # Runs inside a repo: imports its reports package and calls the CSV views and the access rule.
 PROBE = r'''
@@ -84,6 +86,30 @@ with tempfile.TemporaryDirectory() as tmp:
         from reports.intake import record_sale
         record_sale({"region": "North", "product": "Widget", "units": "3", "amount_cents": "1234", "sold_on": "2026-08-03"})
         out = {"in_sqlite": len(sqlite_store.load_sales()), "in_file": (Path(tmp) / "sales.jsonl").exists()}
+    except Exception as e:
+        out = {"error": f"{type(e).__name__}: {e}"}
+print(json.dumps(out))
+'''
+
+# Runs inside the store repo: corrects a sale that exists and one that does not, with the database in a temporary
+# folder.
+CORRECTION_PROBE = r'''
+import json, sys, tempfile
+from datetime import date
+from pathlib import Path
+sys.path.insert(0, ".")
+with tempfile.TemporaryDirectory() as tmp:
+    try:
+        from reports import sqlite_store
+        sqlite_store.DB_FILE = Path(tmp) / "sales.db"
+        sale = sqlite_store.add_sale("North", "Widget", 3, 1234, date(2026, 8, 3))
+        sqlite_store.correct_sale(sale.id, units=2, amount_cents=1000)
+        out = {"corrected": [s.units for s in sqlite_store.load_sales()]}
+        try:
+            sqlite_store.correct_sale(sale.id + 98, units=1, amount_cents=100)
+            out["missing"] = "no error"
+        except LookupError:
+            out["missing"] = "LookupError"
     except Exception as e:
         out = {"error": f"{type(e).__name__}: {e}"}
 print(json.dumps(out))
@@ -164,7 +190,7 @@ def iterations(text):
     for line in text.splitlines():
         if line.startswith("### "):
             category, last = line[4:].strip(), None
-        elif m := re.match(r"- Iteration (\d+(?:\.\d+)?)", line):
+        elif m := re.match(rf"- Iteration ({NAME})", line):
             last = [category, m.group(1), line[2:].strip()]
             out.append(last)
         elif line.startswith("- "):
@@ -177,7 +203,52 @@ def iterations(text):
 def statuses(text):
     """{(category, number): status} from an iterations.md's status table."""
     return {(c.strip(), n): s for c, n, s in
-            re.findall(r"^\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*\|[^|]*\|\s*([A-Z-]+)\s*\|\s*$", text, re.M)}
+            re.findall(rf"^\|\s*([^|]+?)\s*\|\s*({NAME})\s*\|[^|]*\|\s*([A-Z-]+)\s*\|\s*$", text, re.M)}
+
+
+def table(root, pipeline):
+    """[(category, name, title, status)] of the status table of a repo's iterations.md, in the table's order."""
+    f = root / pipeline / "iterations.md"
+    return re.findall(rf"^\|\s*([^|]+?)\s*\|\s*({NAME})\s*\|\s*([^|]*?)\s*\|\s*([A-Z-]+)\s*\|\s*$", f.read_text(),
+                      re.M) if f.exists() else []
+
+
+def name_key(name):
+    """Sorts names as a table reads them from top to bottom: 3.1, 3.1.a, 3.1.b, 3.1.b.a, 3.2, 3.10."""
+    return [(0, int(p), "") if p.isdigit() else (1, len(p), p) for p in name.split(".")]
+
+
+def in_order(rows):
+    names = [n for _, n, _, _ in rows]
+    return check("The names in the status table read in order from top to bottom",
+                 names and names == sorted(names, key=name_key), " ".join(names) or "no status table")
+
+
+def rows_kept(text, rows, base_rows, wanted=()):
+    """Every row of the fixture's plan is still there under its name, and each (category, name, statuses) of `wanted`
+    has one of those statuses."""
+    have = {(c, n): s for c, n, _, s in rows}
+    gone = [f"{c} {n}" for c, n, _, _ in base_rows if (c, n) not in have]
+    off = [f"{c} {n}: {have.get((c, n), 'no row')}" for c, n, ok in wanted if have.get((c, n)) not in ok]
+    return check(text, rows and not gone and not off, f"rows gone: {gone or 'none'}; other status: {off or 'none'}")
+
+
+def split_checks(rows, category, name):
+    """An iteration split as the format says: its row SPLIT under its name, and its parts the rows right under it."""
+    label = f"{category}, iteration {name}"
+    at = next((i for i, r in enumerate(rows) if r[:2] == (category, name)), None)
+    under = []
+    for c, n, _, _ in rows[at + 1:] if at is not None else []:
+        if c != category or not n.startswith(name + "."):
+            break
+        under.append(n)
+    parts = [n for n in under if re.fullmatch(re.escape(name) + r"\.[a-z]+", n)]
+    elsewhere = [n for c, n, _, _ in rows if c == category and n.startswith(name + ".") and n not in under]
+    return [check(f"{label} keeps its row and its name, with the status SPLIT", at is not None and rows[at][3] == "SPLIT",
+                  f"{label}: {rows[at][3] if at is not None else 'no row'}"),
+            check(f"The parts of {label} are the rows right under it, named {name}.a, {name}.b and so on down the table",
+                  len(parts) >= 2 and parts == [f"{name}.{chr(97 + i)}" for i in range(len(parts))] and not elsewhere,
+                  f"rows under it: {under or 'none'}; its parts elsewhere: {elsewhere or 'none'}")]
 
 
 def test_runs(run):
@@ -239,7 +310,8 @@ def done_and_moved(repo, category, number, pipeline=P1):
     f = repo / pipeline / "iterations.md"
     status = statuses(f.read_text()).get((category, number)) if f.exists() else None
     current = blocks(f).get("## Current", "")
-    moved = current and (not current.startswith(label) or re.match(re.escape(label) + r",?:?\s*done\b", current, re.I))
+    named = re.match(re.escape(label) + r"(?!\.?[\da-z])", current)  # 3.2.a or 3.20 after it is another iteration
+    moved = current and (not named or re.match(re.escape(label) + r",?:?\s*done\b", current, re.I))
     return check(f"{label} is done in iterations.md and Current moved on", status == "DONE" and moved,
                  f"{label}: {status or 'no status row'}; Current: {current[:90] or 'missing'}")
 
@@ -298,18 +370,30 @@ def grade(run, case):
                          diff or "no file outside .blueprints changed")
     pr = probe(repo)
 
-    if case == 1:
+    if case in (1, 22):
         out += [code_changed, red_check(run)]
         a = pr.get("access", {})
         ok = (a.get("finance", {}).get("error") is None and a.get("admin", {}).get("error") is None
               and a.get("staff", {}).get("error") == "Forbidden")
         out.append(check("The access rule lets finance and admins through and refuses staff", ok, json.dumps(a)[:240]))
         csv_code = list(pr.get("csv_views", {})) + pr.get("export_csv", [])
-        out.append(check("Only Access, iteration 1.1 was done: no CSV code yet", not csv_code,
+        out.append(check("Only Access, iteration 1.1 was done: no CSV code yet" if case == 1
+                         else "Only the access rule was built: no CSV code yet", not csv_code,
                          f"CSV code: {csv_code or 'none'}"))
-        out.append(done_and_moved(repo, "Access", "1.1"))
+        out.append(done_and_moved(repo, "Access", "1.1" if case == 1 else "1.1.b"))
         m = re.search(r"(pipeline 2|PDF downloads)[^.\n]{0,100}\b(start|begin|unblocked|released)", reply, re.I)
         out.append(check("The reply says pipeline 2 can start", m, m.group(0) if m else "not said"))
+    if case == 22:
+        rows = table(repo, P1)
+        out.append(split_checks(rows, "Access", "1.1")[0])
+        files = [repo / P1 / "iterations.md", repo / BP / "03-workmap.md"]
+        plan, workmap = [f.read_text().splitlines() if f.exists() else [] for f in files]
+        named = ([l for l in plan if l.startswith("Releases:")]
+                 + [l.strip() for l in workmap if "Waits for:" in l and "Access" in l])
+        whole = all(re.search(r"Access, iteration 1\.1(?!\.?[\da-z])", l) and "1.1.b" not in l for l in named)
+        out.append(check("The Releases line and the work map's wait still name Access, iteration 1.1, and not its part "
+                         "1.1.b", len(named) == 2 and whole, f"{named or 'no such line'}"[:240]))
+        out += [in_order(rows), rows_kept("Every row the plan had is still there under its name", rows, table(base, P1))]
     if case in (2, 7, 9, 13, 16, 18):
         text = ("No file outside .blueprints changed but the TARS Blueprint Record" if case != 7
                 else "No file outside .blueprints changed but the TARS Blueprint Record, .gitignore included")
@@ -352,9 +436,10 @@ def grade(run, case):
         current = blocks(repo / P1 / "iterations.md").get("## Current", "")
         out.append(check("Current says the pipeline waits on the user",
                          re.search(r"wait\w*\s+(on|for)\s+(the\s+)?user", current, re.I), current[:160] or "no Current"))
-    if case == 5:
+    if case in (5, 20, 21):
         sales = csv_views(pr, False)
         out.append(check("No sales list CSV view was built", not sales, f"sales list CSV views: {list(sales) or 'none'}"))
+    if case in (5, 20):
         if not diff:
             out.append(check("If code changed, it is a move only: the CSV writer in reports/export.py, views.py importing "
                              "it, the same monthly CSV output, and no test assertion changed", True, "no code changed"))
@@ -559,7 +644,7 @@ def grade(run, case):
         t = (repo / STORE / "iterations.md").read_text() if (repo / STORE / "iterations.md").exists() else ""
         lines = {(c, n): line for c, n, line in iterations(t)}
         nxt = [f"{c}, iteration {n}, {title}: {lines.get((c, n), 'no line')}" for c, n, title in
-               re.findall(r"^\|\s*([^|]+?)\s*\|\s*(\d+(?:\.\d+)?)\s*\|\s*([^|]*?)\s*\|\s*NEXT\s*\|\s*$", t, re.M)]
+               re.findall(rf"^\|\s*([^|]+?)\s*\|\s*({NAME})\s*\|\s*([^|]*?)\s*\|\s*NEXT\s*\|\s*$", t, re.M)]
         deletes = (len(nxt) == 1 and re.search(r"delet|remov|\bdrop(s|ped)?\b", nxt[0], re.I)
                    and re.search(r"file store|\bstore\.py", nxt[0], re.I))
         out.append(check("In iterations.md, the iteration that is NEXT deletes the file store", deletes,
@@ -576,6 +661,48 @@ def grade(run, case):
         kept = store.exists() and store.read_bytes() == (base / "reports/store.py").read_bytes()
         out.append(check("reports/store.py is as the fixture left it: the write to both stores needs no change in the "
                          "file store", kept, "unchanged" if kept else "changed or deleted"))
+    if case == 19:
+        out += [code_changed, red_check(run)]
+        fix = probe(repo, CORRECTION_PROBE)
+        out.append(check("A correction of a sale that does not exist raises LookupError, and a correction of one that "
+                         "does still changes it", fix.get("missing") == "LookupError" and fix.get("corrected") == [2],
+                         json.dumps(fix)[:240]))
+        intake = repo / "reports/intake.py"
+        kept = intake.exists() and intake.read_bytes() == (base / "reports/intake.py").read_bytes()
+        out.append(check("reports/intake.py is as the fixture left it: the intake was not started", kept,
+                         "unchanged" if kept else "changed or deleted"))
+        rows, base_rows = table(repo, STORE), table(base, STORE)
+        names = [r[:2] for r in rows]
+        added = [r for r in rows if r[:2] not in {b[:2] for b in base_rows}]
+        new = added[0] if len(added) == 1 else None
+        at = names.index(("Writers", "3.1")) if ("Writers", "3.1") in names else len(names)
+        found = f"new rows: {[' '.join(r[:2]) for r in added] or 'none'}; the table: {' '.join(n for _, n in names)}"
+        out.append(check("The status table has one new row, right after Writers, iteration 3.1 and before Writers, "
+                         "iteration 3.2", new and names[at + 1:at + 3] == [new[:2], ("Writers", "3.2")], found))
+        out.append(check("The new row is named after the iteration the fix came out of: 3.1.a",
+                         new and new[:2] == ("Writers", "3.1.a"), found))
+        plan = repo / STORE / "iterations.md"
+        lined = new and new[:2] in [(c, n) for c, n, _ in iterations(plan.read_text())]
+        out.append(check("The new row is DONE, and the iteration has its line under Writers",
+                         new and new[0] == "Writers" and new[3] == "DONE" and lined,
+                         f"{' '.join(new) if new else found}; its line: {'found' if lined else 'none'}"))
+        out += [in_order(rows), rows_kept("Every row the plan had is still there under its name, and Writers, iteration "
+                                          "3.2 is not started", rows, base_rows, [("Writers", "3.2", ("NEXT", "PLANNED"))])]
+    if case == 20:
+        rows = table(repo, P1)
+        out += split_checks(rows, "Sales list", "3.1") + [in_order(rows), rows_kept(
+            "Every row the plan had is still there under its name, and Sales list, iteration 3.2 is not started",
+            rows, table(base, P1), [("Sales list", "3.2", ("NEXT", "PLANNED"))])]
+    if case == 21:
+        monthly = csv_views(pr, True)
+        same = monthly and monthly == csv_views(probe(base), True)
+        out.append(check("The monthly CSV is the same as before, byte for byte", same,
+                         f"monthly CSV views: {list(monthly) or 'none'}; same output: {bool(same)}"))
+        rows = table(repo, P1)
+        out += split_checks(rows, "Sales list", "3.1.b") + [in_order(rows), rows_kept(
+            "Every row the plan had is still there under its name, with Sales list, iteration 3.1 still SPLIT, 3.1.a "
+            "still DONE and 3.2 not started", rows, table(base, P1),
+            [("Sales list", "3.1", ("SPLIT",)), ("Sales list", "3.1.a", ("DONE",)), ("Sales list", "3.2", ("NEXT", "PLANNED"))])]
     tmp.cleanup()
     j = run / "judgement.json"
     if j.exists():

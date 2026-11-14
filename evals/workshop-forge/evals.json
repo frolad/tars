@@ -357,6 +357,95 @@
         "Before any code, the reply says that `jobs/stock_alert.py` reads the file store and that no iteration of the plan moves or removes it",
         "The reply asks the user what to do with that job, such as moving it to SQLite in a new iteration, removing it or keeping the file store, and does not decide it alone"
       ]
+    },
+    {
+      "id": 19,
+      "name": "fix-named-after",
+      "fixture": "store-intake-next",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, sales in SQLite: Writers, iteration 3.1 is done.\n\nAn admin's correction now changes the sale's units and amount in SQLite, so the pages, the accounting CSV and the backup show the corrected sale.\n\nRed first: `test_a_correction_changes_the_sale_in_sqlite` failed with `AssertionError: 1234 != 1000`.\n\nNext, Writers, iteration 3.2: the intake stores each sale a till posts in SQLite, under the id SQLite gives it. Today it appends the sale to the file, so the pages, the accounting CSV and the backup miss it. Continue?\n\n[user] one thing in the correction first: I corrected sale 99 by mistake, there is no such sale, and it went through as if it worked. `correct_sale` should raise `LookupError` when no sale has that id. fix that before the intake\n\nReply to the user's last message.",
+      "expected_output": "Runs the fix as an iteration of its own, before the intake: `correct_sale` raises `LookupError` when no sale has the id, red then green, and the intake is not started. The fix comes out of the finished Writers, iteration 3.1, so it is named after it: its row, 3.1.a, sits right after 3.1 and before 3.2 in the status table, which reads in order from top to bottom, and every row the plan had keeps its name. Marks the fix done, reports, describes the intake as the next iteration with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "A correction of a sale that does not exist raises LookupError, and a correction of one that does still changes it",
+        "reports/intake.py is as the fixture left it: the intake was not started",
+        "The status table has one new row, right after Writers, iteration 3.1 and before Writers, iteration 3.2",
+        "The new row is named after the iteration the fix came out of: 3.1.a",
+        "The new row is DONE, and the iteration has its line under Writers",
+        "The names in the status table read in order from top to bottom",
+        "Every row the plan had is still there under its name, and Writers, iteration 3.2 is not started",
+        "The reply reports the fix as an iteration of its own: what changed, and the red line",
+        "Ends with the plan for the next iteration, the intake, without starting it, and the reply's last sentence is the question to continue. A decision for the user that the plan asks before that last sentence does not fail this check"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "needed-first",
+      "fixture": "inline-csv",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge finance-exports 1\n\n[assistant]\nPipeline 1, CSV downloads. Sales list, iteration 3.1: one thing before the code.\n\nThe iteration's line says the sales list CSV goes through the same CSV writer as the monthly report. That writer is not a function yet: the lines that build the CSV sit inside `monthly_report_csv` in `reports/views.py`. The sales list CSV needs them in a place both views can call, `reports/export.py`.\n\nMoving them is a reorganization, so it comes first and on its own: the writer moves to `reports/export.py`, `monthly_report_csv` calls it, and the monthly CSV stays the same, byte for byte. The sales list CSV is built right after it. OK to do the move first?\n\n[user] ok, move first\n\nReply to the user's last message.",
+      "expected_output": "Writes the move into the plan as work that Sales list, iteration 3.1 needs first: 3.1 keeps its row and its name with the status SPLIT, and its parts are the rows right under it, 3.1.a, the move of the CSV writer, and 3.1.b, the sales list CSV, so the status table reads in order from top to bottom and no row the plan had gets another name. Does the move alone, with no behaviour change, reports it as moved, extracted and re-pointed files, describes the sales list CSV as the next iteration with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No sales list CSV view was built",
+        "If code changed, it is a move only: the CSV writer in reports/export.py, views.py importing it, the same monthly CSV output, and no test assertion changed",
+        "Sales list, iteration 3.1 keeps its row and its name, with the status SPLIT",
+        "The parts of Sales list, iteration 3.1 are the rows right under it, named 3.1.a, 3.1.b and so on down the table",
+        "The names in the status table read in order from top to bottom",
+        "Every row the plan had is still there under its name, and Sales list, iteration 3.2 is not started",
+        "In iterations.md, the first part of Sales list, iteration 3.1 is the move of the CSV writer, and its last part is the sales list CSV download",
+        "If the move was done, the report lists each file as moved, extracted or re-pointed, and nothing else",
+        "Ends with the plan for the next iteration, the sales list CSV, without starting it, and the reply's last sentence is the question to continue. A decision for the user that the plan asks before that last sentence does not fail this check"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "second-find",
+      "fixture": "writer-moved",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, CSV downloads. Sales list, iteration 3.1.b: one thing before the code.\n\n`monthly_csv` in `reports/export.py`, the writer that iteration 3.1.a moved there, writes the monthly report's header and columns and nothing else. The sales list has other columns: the date comes first, and there is one line per sale. So the writer has to take the header and the rows from its caller before the sales list can use it.\n\nThat changes code the monthly CSV runs through, so it comes first and on its own: the writer takes the header and the rows, `monthly_report_csv` passes its own, and the monthly CSV stays the same, byte for byte. The sales list CSV is built right after it. OK to do that first?\n\n[user] ok\n\nReply to the user's last message.",
+      "expected_output": "Sales list, iteration 3.1 is already split, and 3.1.b, the part not started, now needs work first, so 3.1.b is split the same way: it keeps its row and its name with the status SPLIT, and its parts are the rows right under it, 3.1.b.a, the writer taking the header and the rows from its caller, and 3.1.b.b, the sales list CSV. The rows around it keep their names and statuses: 3.1 SPLIT, 3.1.a DONE, 3.2 not started, and the status table reads in order from top to bottom. Changes the writer alone, with the monthly CSV the same as before, describes the sales list CSV as the next iteration with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No sales list CSV view was built",
+        "The monthly CSV is the same as before, byte for byte",
+        "Sales list, iteration 3.1.b keeps its row and its name, with the status SPLIT",
+        "The parts of Sales list, iteration 3.1.b are the rows right under it, named 3.1.b.a, 3.1.b.b and so on down the table",
+        "The names in the status table read in order from top to bottom",
+        "Every row the plan had is still there under its name, with Sales list, iteration 3.1 still SPLIT, 3.1.a still DONE and 3.2 not started",
+        "In iterations.md, the first part of Sales list, iteration 3.1.b is the CSV writer taking the header and the rows from its caller, and its last part is the sales list CSV download",
+        "If code changed, it is the writer's change only: the writer in reports/export.py takes the header and the rows from its caller, and nothing of the sales list CSV is built",
+        "Ends with the plan for the next iteration, the sales list CSV, without starting it, and the reply's last sentence is the question to continue. A decision for the user that the plan asks before that last sentence does not fail this check"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "split-release",
+      "fixture": "access-split",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge finance-exports 1\n\n[assistant]\nPipeline 1, CSV downloads: Access, iteration 1.1.a is done.\n\n`finance` is a known role now: `ROLES` in `reports/auth.py` holds it next to `staff` and `admin`.\n\nRed first: `test_finance_is_a_known_role` failed with `AssertionError: 'finance' not found in {'staff', 'admin'}`.\n\nNext, Access, iteration 1.1.b: `require_role` lets a view through for any of several roles, so `require_role(\"finance\", \"admin\")` admits finance and admins and refuses everyone else with `Forbidden`. Today it takes one role. Continue?\n\n[user] continue\n\nReply to the user's last message.",
+      "expected_output": "Runs Access, iteration 1.1.b: `require_role` lets a view through for any of several roles, red then green, and marks it done. Access, iteration 1.1, which was split into 1.1.a and 1.1.b, is the release point for pipeline 2, and it is done now that all its parts are: the reply tells the user that pipeline 2 can start and what it receives. The lines that name the release point are not rewritten: the Releases line and the work map's wait still name Access, iteration 1.1, whose row keeps its name and the status SPLIT. Describes Monthly report, iteration 2.1 with the question to continue, and stops.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "A test run failed before a passing one (the red step)",
+        "The access rule lets finance and admins through and refuses staff",
+        "Only the access rule was built: no CSV code yet",
+        "Access, iteration 1.1.b is done in iterations.md and Current moved on",
+        "Access, iteration 1.1 keeps its row and its name, with the status SPLIT",
+        "The Releases line and the work map's wait still name Access, iteration 1.1, and not its part 1.1.b",
+        "The reply says pipeline 2 can start",
+        "The names in the status table read in order from top to bottom",
+        "Every row the plan had is still there under its name",
+        "The reply says what pipeline 2 receives: the access rule for finance and admins",
+        "Ends with the plan for the next iteration, without starting it, and the reply's last sentence is the question to continue. A decision for the user that the plan asks before that last sentence does not fail this check"
+      ]
     }
   ]
 }

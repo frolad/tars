@@ -2,6 +2,51 @@
 
 Changes from 0.7.0 on. Each version's section is also its GitHub release's text.
 
+## 0.7.3
+
+TARS and its optional mod, tars-mod, are both at 0.7.3. Update the mod together with the plugin.
+
+### Changes
+
+- An iteration that `/workshop-forge` adds to a running pipeline gets a name that reads in order where it runs. A
+  fix that runs after 6.7 and before 6.8 is 6.7.a, and the next one 6.7.b. Before, it took the next free number of
+  its category, such as 6.20 in a category planned up to 6.19, so a status table read 6.7, 6.20, 6.8.
+- Work that an iteration not yet done needs first splits that iteration. Its row keeps its name, with the status
+  SPLIT, and its parts are the rows right under it: 6.8.a, the new work, then 6.8.b, what 6.8 was planned to do. A
+  part splits the same way, into 6.8.b.a and 6.8.b.b.
+- No name already in a plan changes, so every earlier mention of an iteration, in a report or a note, still points
+  at it. At the end of its category an added iteration takes the next whole number, as before.
+- A split iteration is done when all its parts are. A release point, or another pipeline's wait, that names it
+  stays as written, and `/workshop-forge` tells you which pipeline can start once the last part is done. Before, the
+  work map's format said to rewrite the wait when such an iteration was split.
+- The note that tells `/workshop-forge` which iteration is next, and the mod's status line and pipeline pane, read
+  the new names. An older mod skips them: with an iteration such as 6.7.a next and every other one done, its status
+  line says the pipeline is done.
+- What does not change: the iterations already in a blueprint keep their numbers, a planned iteration that only
+  moves keeps its number, and a new plan from `/workshop-craft` is numbered with whole numbers.
+- The testing rules say where test cases come from: what is already known about the real data, such as earlier runs
+  and their counts, bug reports, logs, the task records in `docs/tars-reports/`, your examples, and under
+  `/workshop-forge` the blueprint's recons and knowledge files. Each path the change touches that this data reaches
+  gets its own test, and values that take the same path are one case. An invented case tests what the agent
+  expects; a case from a real run tests what the data holds.
+- Code that the change calls without changing it, that this data reaches and no test covers, gets its test in the
+  same change. That code already works, so the test cannot fail first: the agent proves it by breaking the code
+  once and putting it back.
+
+### For contributors
+
+- The workshop-forge evals have four new cases on the name and the place of an added iteration: `fix-named-after`,
+  `needed-first`, `second-find` and `split-release`, with two fixtures whose plans hold lettered names,
+  `writer-moved` and `access-split`.
+- The workshop-forge and workshop-craft graders read lettered names, and the workshop-craft grader has tests of its
+  own, `evals/workshop-craft/test_grade.py`.
+- The testing evals have a fourth case, `cases-from-recon`: a change to how a document's citations are fixed, where
+  a dry run's notes show the paths the real data takes. Its grader breaks each path in a copy of the repo to see a
+  test fail.
+- When you judge eval runs with a second agent, give it copies of the reply and the repo with the run's path taken
+  out. A reply names files as links with the full path, and a run's folder says which version of a skill it used.
+  The record of this version's task, `docs/tars-reports/iteration-numbers/`, has the details under Traps.
+
 ## 0.7.2
 
 ### Changes

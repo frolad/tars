@@ -364,6 +364,28 @@ class ForgeState(Base):
         self.assertIn("next unfinished iteration, CSV, iteration 2.3, NEXT:\n- Iteration 2.3: a download button", text)
         self.assertNotIn("Iteration 2.2", text)
 
+    def test_an_added_iteration_with_a_lettered_name_is_the_next_one(self):
+        self.s.write(CSV, PIPELINE.replace("| CSV      | 2.2 | totals          | PLANNED |",
+                                           "| CSV      | 2.1.a | amount column | NEXT    |\n"
+                                           "| CSV      | 2.2 | totals          | PLANNED |")
+                                  .replace("- Iteration 2.2: totals",
+                                           "- Iteration 2.1.a, spawned by iteration 2.1: the amount column names the "
+                                           "currency.\n- Iteration 2.2: totals"))
+        text = context(self.s.prompt("/workshop-forge exports 1"))
+        self.assertIn("next unfinished iteration, CSV, iteration 2.1.a, NEXT:\n"
+                      "- Iteration 2.1.a, spawned by iteration 2.1: the amount column names the currency.", text)
+        self.assertNotIn("Iteration 2.2", text)
+
+    def test_the_line_of_an_iteration_named_after_another_is_not_taken_for_that_ones(self):
+        self.s.write(CSV, PIPELINE.replace("| CSV      | 2.1 | header row      | DONE    |",
+                                           "| CSV      | 2.1 | header row      | BLOCKED |")
+                                  .replace("- Iteration 2.1: the header row",
+                                           "- Iteration 2.1.a, spawned by iteration 2.1: the amount column names the "
+                                           "currency.\n- Iteration 2.1: the header row"))
+        text = context(self.s.prompt("/workshop-forge exports 1"))
+        self.assertIn("next unfinished iteration, CSV, iteration 2.1, BLOCKED:\n- Iteration 2.1: the header row", text)
+        self.assertNotIn("Iteration 2.1.a", text)
+
     def test_the_pause_is_kept_where_the_mod_reads_it(self):
         flag = self.s.home / ".tars" / "paused-s1"
         self.s.prompt("stop sttp")

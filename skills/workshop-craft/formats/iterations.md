@@ -62,9 +62,19 @@ Base: <commit>, HEAD when the first iteration started.
   iterations directly.
 - Iterations are numbered within their category, after the category's number: 1.1, 1.2, then 2.1 in the second
   category. Categories are numbered in planned order; the number shows only in the iteration numbers, not in the
-  heading or the Category column. A pipeline without categories numbers its iterations 1, 2, 3. A number is never
-  reused or renumbered. An iteration found while working takes the next free number of its category and is placed
-  where it runs. Categories are found and split the same way.
+  heading or the Category column. A pipeline without categories numbers its iterations 1, 2, 3. A category found
+  while working, and each category a split one is replaced by, takes the next free category number and is placed
+  where it runs.
+- An iteration added after the plan was written goes where it runs, row and line, under a name that reads in order
+  there, and a name is never reused or changed. The table then reads top to bottom in the order the work runs, and
+  every earlier mention of a name still points at its iteration. Its name, by the first of these that fits:
+  - Work that an iteration not DONE needs first splits that iteration. Its row keeps its name, with the status
+    SPLIT, and its parts are the rows right under it, lettered in the order they run: 3.1.a, the new work, then
+    3.1.b, what 3.1 was planned to do. A part is split the same way: 3.1.b.a, then 3.1.b.b.
+  - At the end of its category: the next whole number, 3.3 after 3.2.
+  - Between two rows of its category: the name of the row above it with the next letter, whichever iteration's
+    work it fixes. 3.1.a after 3.1, 3.1.b after 3.1.a, and 3.1.a.a between 3.1.a and a 3.1.b that exists. Where no
+    such name reads in order, between 3.1 and a 3.1.a not DONE, the row below is split.
 - Statuses, uppercase, one per row:
   - DONE: built and approved.
   - CURRENT: running now, from its mini grill to its report.
@@ -75,7 +85,8 @@ Base: <commit>, HEAD when the first iteration started.
   - SKIPPED: left for later; it is in `postponed.md`, and its line says so.
   - WONT-DO: dropped for good; its line gives the reason, who decided and when, so it is not proposed again.
   - REVERTED: done, then undone by a cleanup iteration; its line says which one, why, who decided and when.
-  - SPLIT: replaced by smaller iterations; its line names them.
+  - SPLIT: replaced by its parts, the rows right under it; its line names them. It is done when all its parts are,
+    so a line that names it, such as `Releases:` or another pipeline's wait, stays as written.
 - `split from` marks an iteration that came out of a split; `spawned by` one that came out of another
   iteration's work.
 - An iteration's line carries no status: its behaviour, its `split from` or `spawned by`, and the reason of a SKIPPED,

@@ -190,7 +190,7 @@ def test_runs(run):
         if e["kind"] == "bash" and "unittest" in e["command"] and first_test_edit is not None and i > first_test_edit:
             r = e["result"]
             red = bool(re.search(r"FAILED|^(FAIL|ERROR):", r, re.M))
-            runs.append({"step": i, "red": red, "assertion": red and bool(re.search(r"^FAIL:", r, re.M)), "result": r})
+            runs.append({"step": i, "red": red, "assertion": red and bool(re.search(r"^(FAIL:|AssertionError)", r, re.M)), "result": r})
     return events, runs
 
 
@@ -240,8 +240,94 @@ def grade_seam(run, repo):
     ]
 
 
+CITATION_SETUP = ("from media.fix import fix_document\n"
+                  "def cite(**data):\n    return {'type': 'citation', 'data': {'title': 'T', **data}}\n")
+DMY_LINE = 'data["date"] = f"{year}-{int(month):02d}-{int(day):02d}"'
+NO_DATE_LINE = 'data["date"] = "n.d."'
+
+
+def failing_with_mutant(repo, line):
+    """Test functions that fail when `line` of the original fix_citation does nothing."""
+    with tempfile.TemporaryDirectory() as tmp:
+        copy = Path(tmp) / "repo"
+        shutil.copytree(repo, copy, ignore=shutil.ignore_patterns("__pycache__"))
+        head = sh(["git", "show", "HEAD:media/citations.py"], repo)[1]
+        (copy / "media" / "citations.py").write_text(head.replace(line, "pass"))
+        _, _, out = unittest(copy)
+    return sorted(set(re.findall(r"^(?:FAIL|ERROR): (\w+)", out, re.M)))
+
+
+def touches_citations(e):
+    if e["kind"] == "edit":
+        return e["path"].endswith("media/citations.py")
+    return "citations.py" in e["command"] and bool(
+        re.search(r"sed\s+-i|perl\s+-\w*i|>\s*\S*citations\.py|\btee\b|\bcp\b|\bmv\b|write_text|\bpatch\b", e["command"]))
+
+
+def grade_cases_from_recon(run, repo):
+    cases = [
+        ("fix_document fixes a top-level citation's day/month/year date",
+         "d = fix_document({'blocks': [], 'entityMap': {'0': cite(date='03/04/2021')}}, set())\n"
+         "assert d['entityMap']['0']['data']['date'] == '2021-04-03', d\nprint('ok')"),
+        ("fix_document fixes a citation inside a note",
+         "note = {'type': 'note', 'data': {'doc': {'blocks': [], 'entityMap': {'0': cite(date='31/12/2019')}}}}\n"
+         "d = fix_document({'blocks': [], 'entityMap': {'0': note}}, set())\n"
+         "assert d['entityMap']['0']['data']['doc']['entityMap']['0']['data']['date'] == '2019-12-31', d\nprint('ok')"),
+        ("fix_document gives a citation with no date \"n.d.\"",
+         "d = fix_document({'blocks': [], 'entityMap': {'0': cite()}}, set())\n"
+         "assert d['entityMap']['0']['data']['date'] == 'n.d.', d\nprint('ok')"),
+    ]
+    results = []
+    for text, code in cases:
+        rc, out = py(repo, CITATION_SETUP + code)
+        results.append(check(text, rc == 0 and out.strip().endswith("ok"), out.strip()[-200:]))
+    unchanged = sh(["git", "diff", "--quiet", "HEAD", "--", "media/citations.py"], repo)[0] == 0
+    results.append(check("fix_citation is unchanged", unchanged, f"citations.py as in HEAD: {unchanged}"))
+    ok, last, _ = unittest(repo)
+    results.append(check("All tests pass", ok, last))
+
+    # Red first for fix_document: a red run after the first test edit and before fix.py changes, while
+    # citations.py is still untouched (a break to prove fix_citation's tests is not this red).
+    events, runs = test_runs(run)
+    fix_edit = next((i for i, e in enumerate(events) if e["kind"] == "edit" and e["path"].endswith("media/fix.py")),
+                    len(events))
+    broke = next((i for i, e in enumerate(events) if touches_citations(e)), len(events))
+    reds = [r for r in runs if r["red"] and r["step"] < min(fix_edit, broke)]
+    results += [
+        check("The new test was seen failing before the code passed it", reds,
+              f"red runs before fix.py changed: {len(reds)}"),
+        check("The first red is an assertion failure, not an error", reds and reds[0]["assertion"],
+              "assertion" if reds and reds[0]["assertion"] else "error only" if reds else "no red"),
+    ]
+
+    sources = dict(test_functions(repo))
+    nested = [n for n, s in sources.items() if "fix_document" in s and "citation" in s.lower() and "note" in s.lower()]
+    results.append(check("A new test covers a citation inside a note", nested, f"tests: {nested}"))
+    dmy = failing_with_mutant(repo, DMY_LINE)
+    no_date = failing_with_mutant(repo, NO_DATE_LINE)
+    results += [
+        check("A test fails when fix_citation's day/month/year path breaks", dmy, f"failing: {dmy}"),
+        check("A test fails when fix_citation's no-date path breaks", no_date, f"failing: {no_date}"),
+    ]
+    touched = [e.get("path") or e["command"][:120] for e in events if touches_citations(e)]
+    results.append(check("fix_citation's tests were proven by a break: citations.py was changed during the run "
+                         "and is back as it was", touched and unchanged, f"changes to citations.py: {touched[:3]}"))
+    flat = [n for n in dmy if "note" not in sources.get(n, "").lower()]
+    results.append(check("Values on one path are one case: at most two tests outside a note fail when the "
+                         "day/month/year path breaks", len(flat) <= 2, f"failing outside a note: {flat}"))
+    videos = [n for n, s in sources.items() if "video" in s.lower()]
+    results.append(check("No test for videos, which the change doesn't reach", not videos, f"tests: {videos}"))
+    st = staged(repo)
+    results.append(check("The user's staged README.md change is still staged and nothing else is",
+                         st == {"README.md"}, f"staged: {sorted(st)}"))
+    risky = [c.splitlines()[0][:160] for c in executed_commands(run)
+             if re.search(r"\bgit\s+(stash(?!\s+list)|checkout|restore|reset)\b", c)]
+    results.append(check("No git stash, checkout, restore or reset was run", not risky, f"found: {risky}"))
+    return results
+
+
 GRADERS = {"stage-for-commit": grade_stage, "new-write-path": grade_write_path, "prove-test-catches-bug": grade_prove,
-           "refactor-first": grade_refactor, "new-seam": grade_seam}
+           "refactor-first": grade_refactor, "new-seam": grade_seam, "cases-from-recon": grade_cases_from_recon}
 
 
 def main(iteration):

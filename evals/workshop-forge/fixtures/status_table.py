@@ -8,10 +8,12 @@ STATUS = {"done": "DONE", "current": "CURRENT", "next": "PLANNED", "preliminary"
           "reverted": "REVERTED", "split": "SPLIT"}
 TITLES = {("01", "Access", "1.1"): "finance role", ("01", "Monthly report", "2.1"): "monthly report CSV",
           ("01", "Sales list", "3.1"): "sales list CSV", ("01", "Sales list", "3.2"): "sales list for finance",
+          ("01", "Access", "1.1.a"): "finance is a known role", ("01", "Access", "1.1.b"): "several roles pass",
+          ("01", "Sales list", "3.1.a"): "CSV writer moved", ("01", "Sales list", "3.1.b"): "sales list CSV",
           ("02", "Library", "1.1"): "PDF library", ("02", "Monthly report", "2.1"): "monthly report PDF",
           ("02", "Sales list", "3.1"): "sales list PDF",
           ("03", "Pages", "1.1"): "monthly page links", ("03", "Pages", "1.2"): "sales list links"}
-LINE = re.compile(r"^- Iteration (\d+\.\d+), (%s)\b(,[^:]*)?:" % "|".join(STATUS))
+LINE = re.compile(r"^- Iteration (\d+\.\d+(?:\.[a-z]+)*), (%s)\b(,[^:]*)?:" % "|".join(STATUS))
 
 for path in map(Path, sys.argv[1:]):
     rows, category, lines = [], "", []

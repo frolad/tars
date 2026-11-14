@@ -174,6 +174,25 @@ test("between iterations, the status line names the NEXT row ahead of an earlier
   expect(shown.at(-1)).toBe("primary · csv → CSV → totals · NEXT · 1/3")
 })
 
+// Iterations added after the plan was written, named with letters: 2.1.a came out of 2.1, and 2.2 was split into
+// 2.2.a and 2.2.b, whose own parts are 2.2.b.a and 2.2.b.b.
+const ADDED = ITERATIONS.replace("| CURRENT |", "| DONE    |").replace("| CSV      | 2.2 | totals       | PLANNED |", [
+  "| CSV      | 2.1.a   | amount column | NEXT    |",
+  "| CSV      | 2.2     | totals        | SPLIT   |",
+  "| CSV      | 2.2.a   | rates         | PLANNED |",
+  "| CSV      | 2.2.b   | totals row    | SPLIT   |",
+  "| CSV      | 2.2.b.a | rounding      | PLANNED |",
+  "| CSV      | 2.2.b.b | totals row    | PLANNED |",
+].join("\n"))
+
+test("the status line names an added iteration with a lettered name, and counts it and the parts of a split one",
+  async ($, on) => {
+    home(on, { "/home/u/.tars/forge-s1": PIPELINE, [PIPELINE]: ADDED })
+    const shown = statusLine(on)
+    await turnEnds($)
+    expect(shown.at(-1)).toBe("primary · csv → CSV → amount column · NEXT · 2/6")
+  })
+
 test("the status line follows /sttp-mode and a write under .blueprints/ at once", async ($, on) => {
   const files = home(on, { "/home/u/.tars/forge-s1": PIPELINE, [PIPELINE]: ITERATIONS })
   const shown = statusLine(on)
@@ -332,6 +351,26 @@ test("between iterations, the pane points at the NEXT one, says so, and leaves a
     const earlier = await ui.find({ type: "Text", text: /header row/ })
     expect(earlier?.text).toBe("○ 2.1 header row")
     expect(earlier?.props.color).toBeUndefined()
+    await ui.unmount()
+  })
+
+test("the pane lists added iterations and the parts of a split one under their category, and points at the next one",
+  async ($, on) => {
+    home(on, { "/home/u/.tars/forge-s1": PIPELINE, [PIPELINE]: ADDED })
+    const ui = await $.ui.mount({ ...PANE, surface: "terminal" })
+    expect(await texts(ui)).toEqual([
+      "csv · 2/6 done",
+      "Setup",
+      "✓ 1.1 export route",
+      "CSV",
+      "✓ 2.1 header row",
+      "▶ 2.1.a amount column · NEXT",
+      "– 2.2 totals · SPLIT",
+      "○ 2.2.a rates",
+      "– 2.2.b totals row · SPLIT",
+      "○ 2.2.b.a rounding",
+      "○ 2.2.b.b totals row",
+    ])
     await ui.unmount()
   })
 

@@ -277,6 +277,107 @@ if __name__ == "__main__":
     unittest.main()
 PY
   ;;
+cases-from-recon)
+  echo "# media" > README.md
+  mkdir media docs; : > media/__init__.py
+  cat > media/images.py <<'PY'
+PLACEHOLDER = "/img/missing.png"
+
+
+def fix_image(entity, files):
+    """An image whose own file is gone points at the placeholder."""
+    src = entity["data"].get("src", "")
+    if src.startswith("/files/") and src[len("/files/"):] not in files:
+        return {**entity, "data": {**entity["data"], "src": PLACEHOLDER}}
+    return entity
+PY
+  cat > media/citations.py <<'PY'
+import re
+
+DAY_MONTH_YEAR = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
+
+
+def fix_citation(entity):
+    """A citation with its date as YYYY-MM-DD, which the Lexical importer reads; no date becomes "n.d."."""
+    data = dict(entity["data"])
+    date = (data.get("date") or "").strip()
+    if not date:
+        data["date"] = "n.d."
+    else:
+        match = DAY_MONTH_YEAR.match(date)
+        if match:
+            day, month, year = match.groups()
+            data["date"] = f"{year}-{int(month):02d}-{int(day):02d}"
+    return {**entity, "data": data}
+PY
+  cat > media/fix.py <<'PY'
+from media.images import fix_image
+
+
+def fix_document(doc, files):
+    """A copy of a Draft.js document with its entities fixed, the ones inside a note's own document too."""
+    entity_map = {}
+    for key, entity in doc.get("entityMap", {}).items():
+        if entity.get("type") == "note":
+            entity = {**entity, "data": {**entity["data"], "doc": fix_document(entity["data"]["doc"], files)}}
+        elif entity.get("type") == "image":
+            entity = fix_image(entity, files)
+        entity_map[key] = entity
+    return {**doc, "entityMap": entity_map}
+PY
+  cat > docs/recon.md <<'MD'
+# Dry run of fix_document on the production copy, 2026-11-10
+
+52,310 documents. What the run found, by entity:
+
+## Images
+
+- 4,120 images point at a file that is no longer in `files`: fixed to the placeholder.
+- 312 of them sit inside a note's own document: fixed too.
+
+## Citations (not fixed yet: fix_document doesn't call fix_citation)
+
+- 1,204 citations have their date as day/month/year, such as `03/04/2021`, `31/12/2019` and `1/2/2020`. The
+  Lexical importer reads only `YYYY-MM-DD`, so these fail to import.
+- 88 citations have no date at all; the importer fails on them too.
+- 97 of these broken citations sit inside a note's own document, not at the top level.
+- The other 5,930 citations already have `YYYY-MM-DD` dates.
+
+## Videos
+
+- 813 videos have no file. Not handled yet.
+MD
+  cat > tests/test_fix.py <<'PY'
+import unittest
+
+from media.fix import fix_document
+from media.images import PLACEHOLDER
+
+
+def image(src):
+    return {"type": "image", "mutability": "IMMUTABLE", "data": {"src": src}}
+
+
+class FixDocumentTest(unittest.TestCase):
+    def test_missing_own_file_gets_the_placeholder(self):
+        doc = {"blocks": [], "entityMap": {"0": image("/files/abc")}}
+        self.assertEqual(fix_document(doc, files=set())["entityMap"]["0"]["data"]["src"], PLACEHOLDER)
+
+    def test_existing_own_file_is_kept(self):
+        doc = {"blocks": [], "entityMap": {"0": image("/files/abc")}}
+        self.assertEqual(fix_document(doc, files={"abc"})["entityMap"]["0"]["data"]["src"], "/files/abc")
+
+    def test_image_inside_a_note_is_fixed(self):
+        note = {"type": "note", "data": {"doc": {"blocks": [], "entityMap": {"0": image("/files/gone")}}}}
+        doc = {"blocks": [], "entityMap": {"0": note}}
+        fixed = fix_document(doc, files=set())
+        self.assertEqual(fixed["entityMap"]["0"]["data"]["doc"]["entityMap"]["0"]["data"]["src"], PLACEHOLDER)
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+  ;;
 *) echo "unknown case $case_name" >&2; exit 1 ;;
 esac
 git add -A; git commit -qm "Initial"
