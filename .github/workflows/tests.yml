@@ -12,8 +12,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python: ["3.x"]
         include:
-          # Apple's own python3 on a Mac without Homebrew is 3.9
-          - os: ubuntu-latest
+          # Apple's own python3 on a Mac without Homebrew is 3.9; setup-python builds 3.9 for Ubuntu 24.04 at the latest
+          - os: ubuntu-24.04
             python: "3.9"
     steps:
       - uses: actions/checkout@v7
