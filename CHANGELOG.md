@@ -2,6 +2,27 @@
 
 Changes from 0.7.0 on. Each version's section is also its GitHub release's text.
 
+## 0.7.5
+
+tars-mod goes to 0.7.5 with the plugin, with no change of its own.
+
+### Changes
+
+- `/workshop-forge` no longer loses the end of a pipeline after a compaction. Claude Code re-attaches only the first
+  5,000 tokens of a skill after a compaction, and workshop-forge had grown to about 6,000, so the steps from the Done
+  when check to the pipeline done were cut, the hardening phase among them. Those steps now live in
+  `skills/workshop-forge/end-of-pipeline.md`, which the agent reads once every iteration is done, and again after a
+  compaction. The rules for starting a pipeline from a session, with no blueprint, moved the same way, to
+  `from-session.md`. The rules themselves did not change.
+
+### For contributors
+
+- workshop-forge's `SKILL.md` is now about 4,660 tokens. A rule needed only at one step goes into a file next to it,
+  with a line in `SKILL.md` that says when to read it, so `SKILL.md` stays under the 5,000 tokens that survive a
+  compaction.
+- The ten workshop-forge cases that reach the moved text ran with the old text and the new: 203 of 204 checks with
+  the old, 201 of 204 with the new, and every run with the new text read the file its step needs.
+
 ## 0.7.4
 
 tars-mod goes to 0.7.4 with the plugin, with no change of its own.
