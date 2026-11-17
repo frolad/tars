@@ -91,7 +91,8 @@
         "If code changed, it is a move only: the CSV writer in reports/export.py, views.py importing it, the same monthly CSV output, and no test assertion changed",
         "The move is proposed or done as its own iteration, before the sales list CSV",
         "If the move was done, the report lists each file as moved, extracted or re-pointed, and nothing else",
-        "Ends with the next iteration and the question to continue last"
+        "Ends with the next iteration and the question to continue last",
+        "Suggests no QA of the running software: a move changes nothing its users see"
       ]
     },
     {
@@ -165,20 +166,18 @@
         "frontend-design: Create distinctive, production-grade frontend interfaces.",
         "playground: Creates interactive HTML playgrounds."
       ],
-      "expected_output": "Finds every iteration of pipeline 1 done. Checks the Done when items (scope 1 to 5 for the CSV files, and 7) against the code, each with where to see it. Suggests a commit, since the sales list iterations are uncommitted, and leaves it to the user. Guides the user to a review of everything since the Base commit: gives the range and what is not committed yet, lists the review skills the session has, numbered, recommends none, and waits for the user's pick. Writes the pipeline's file of the TARS Blueprint Record from the blueprint, since the checkout has none, with State built. Commits nothing, runs no review and changes no code.",
+      "expected_output": "Finds every iteration of pipeline 1 done. Checks the Done when items (scope 1 to 5 for the CSV files, and 7) against the code, each with where to see it. Writes the pipeline's file of the TARS Blueprint Record from the blueprint, since the checkout has none, with State built. Announces the hardening phase and offers three picks: every kind the session has, in order, a cleanup with simplify, the code review, then QA, recommended, or the first two with why QA is left out; QA only; or no hardening; and waits for the user's pick: no code review and no QA run, and no review skill asked for yet. Commits nothing and changes no code.",
       "assertions": [
         "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
         "No other skill was loaded",
         "The tests pass at the end",
         "No file outside .blueprints changed but the TARS Blueprint Record",
         "No review ran: no subagent was started",
-        "The reply suggests a commit",
-        "The reply names both review skills the session lists",
         "Current says the pipeline waits on the user",
         "The pipeline's record file says State built",
         "Checks each Done when item against what was built, with where to see it",
-        "Lists the review skills numbered with no recommendation, and asks which one to run",
-        "Gives the current condition: the range from the Base commit and what is not committed yet"
+        "Announces the hardening phase and offers three picks: simplify's cleanup, the code review and QA, recommended, or the first two with why QA is left out; QA only; or no hardening",
+        "Waits for the user's pick: runs no code review and no QA, and asks for no review skill yet"
       ]
     },
     {
@@ -251,8 +250,8 @@
       "id": 13,
       "name": "task-done",
       "fixture": "region-done",
-      "prompt": "The conversation so far:\n\n[user] /workshop-forge region-filter 1\n\n[assistant]\nPipeline 1, region filter: every iteration is done, so this is the end of the pipeline.\n\nDone when:\n1. The monthly page and its JSON show only the region asked for, matched in any case: met, `monthly_sales` in `reports/queries.py`, tested in `tests/test_queries.py` and `tests/test_views.py`.\n2. A region with no sales shows no rows and a total of 0.00: met, `test_a_region_with_no_sales_has_no_rows_and_a_zero_total`.\n3. Without a region, both show every region, as before: met, `test_every_region_without_one`.\n\nEverything since the Base commit is committed, so the review can start from it. The review skills this session lists:\n1. code-review\n2. mattpocock-skills:code-review\n\nWhich one should run?\n\n[user] 1\n\n[assistant]\nThe review of everything since the Base commit found one thing:\n\n1. `monthly_sales` compares regions with `casefold()` but keeps spaces, so \" North\" with a leading space finds nothing.\n\nFix it as an iteration, list it, or drop it?\n\n[user] drop it, the sales form trims the names before they are saved\n\nReply to the user's last message.",
-      "expected_output": "With the one finding dropped, every Done when item met and no glossary or ADRs to merge, the pipeline is done: Current says so, and the State of the pipeline's file in the TARS Blueprint Record goes from built to done in the same turn. No code changes and nothing else starts.",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge region-filter 1\n\n[assistant]\nPipeline 1, region filter: every iteration is done, so this is the end of the pipeline.\n\nDone when:\n1. The monthly page and its JSON show only the region asked for, matched in any case: met, `monthly_sales` in `reports/queries.py`, tested in `tests/test_queries.py` and `tests/test_views.py`.\n2. A region with no sales shows no rows and a total of 0.00: met, `test_a_region_with_no_sales_has_no_rows_and_a_zero_total`.\n3. Without a region, both show every region, as before: met, `test_every_region_without_one`.\n\nThe hardening phase comes next: a code review of everything since the Base commit, and QA (checking the running app the way its users reach it). Pick one:\n1. Both: the code review, then QA (recommended)\n2. QA only\n3. No hardening\n\n[user] just the code review this time\n\n[assistant]\nEverything since the Base commit is committed, so the code review can start from it. The review skills this session lists:\n1. code-review\n2. mattpocock-skills:code-review\n\nWhich one should run?\n\n[user] 1\n\n[assistant]\nThe code review of everything since the Base commit found one thing, and it holds in the code:\n\n1. `monthly_sales` compares regions with `casefold()` but keeps spaces, so \" North\" with a leading space finds nothing. I recommend fixing it as an iteration: a region typed with a space finds no rows today.\n\nFix it as an iteration, or drop it?\n\n[user] drop it, the sales form trims the names before they are saved\n\nReply to the user's last message.",
+      "expected_output": "With the one finding dropped, every Done when item met, no glossary or ADRs to merge, and the code review alone asked for in the hardening phase, the pipeline is done: Current says so, and the State of the pipeline's file in the TARS Blueprint Record goes from built to done in the same turn. No code changes, no QA, and nothing else starts.",
       "assertions": [
         "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
         "No other skill was loaded",
@@ -260,7 +259,8 @@
         "No file outside .blueprints changed but the TARS Blueprint Record",
         "Current says the pipeline is done",
         "The pipeline's record file's State is done",
-        "Says the pipeline is done and starts nothing else"
+        "Says the pipeline is done and starts nothing else",
+        "Starts no QA and offers none: the user asked for the code review alone"
       ]
     },
     {
@@ -445,6 +445,188 @@
         "Every row the plan had is still there under its name",
         "The reply says what pipeline 2 receives: the access rule for finance and admins",
         "Ends with the plan for the next iteration, without starting it, and the reply's last sentence is the question to continue. A decision for the user that the plan asks before that last sentence does not fail this check"
+      ]
+    },
+    {
+      "id": 23,
+      "name": "review-pick",
+      "fixture": "pipeline-done",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge finance-exports 1\n\n[assistant]\nPipeline 1, CSV downloads: every iteration is done, so this is the end of the pipeline.\n\nDone when, for this pipeline:\n1. A finance user downloads the monthly report as CSV: met, `monthly_report_csv` in `reports/views.py`, tested in `tests/test_views.py`.\n2. A finance user downloads the admin sales list as CSV: met, `all_sales_csv` in `reports/admin_views.py`, tested in `tests/test_admin_views.py`.\n3. An admin gets the same downloads: met, the same views and tests.\n4. A logged-in user without the finance or admin role gets no download, and keeps the monthly page and its JSON: met, `require_role(\"finance\", \"admin\")` on both CSV views; `tests/test_views.py` and `tests/test_admin_views.py` check the refusal.\n5. Every amount in the files matches the amount on its page: met, `tests/test_files_match_pages.py` compares them.\n7. A finance user opens the sales list page; a user without the finance or admin role still cannot: met, `all_sales` in `reports/admin_views.py`, tested in `tests/test_admin_views.py`.\n\nThe hardening phase comes next: a code review of everything since the Base commit, and QA (checking the running app the way its users reach it). Pick one:\n1. Both: the code review, then QA (recommended)\n2. QA only\n3. No hardening\n\n[user] 1\n\nReply to the user's last message.",
+      "session_skills": [
+        "code-review: Review the current diff or a PR for bugs and cleanups. Built into Claude Code.",
+        "mattpocock-skills:code-review: Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec).",
+        "frontend-design: Create distinctive, production-grade frontend interfaces.",
+        "playground: Creates interactive HTML playgrounds."
+      ],
+      "expected_output": "With both picked, the code review then QA, starts the code review step as before: suggests a commit, since the sales list iterations are uncommitted, and leaves it to the user; gives the range from the Base commit and what is not committed yet; lists the review skills the session has, numbered, recommends none, and asks which one to run. Says QA comes once the fixes taken from the code review are built. Commits nothing, runs no review and no QA, and changes no code.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "No review ran: no subagent was started",
+        "The reply suggests a commit",
+        "The reply names both review skills the session lists",
+        "Current says the pipeline waits on the user",
+        "The pipeline's record file says State built",
+        "Lists the review skills numbered with no recommendation, and asks which one to run",
+        "Gives the current condition: the range from the Base commit and what is not committed yet",
+        "Says QA comes after the fixes taken from the code review are built, and starts no QA now"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "qa-skills",
+      "fixture": "region-fixed",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nReview fixes, iteration 2.1 is done. A region typed with spaces around it, such as \" North\", now finds its rows on the monthly page and in its JSON.\n\nRed first: `test_spaces_around_a_region_are_ignored` failed with `AssertionError: Lists differ: [] != ['North']`.\n\nThat was the only fix taken from the code review. The cleanup ran before the code review. Next: QA, the last part of the hardening phase you picked (all three: the cleanup, the code review, then QA). Continue?\n\n[user] continue\n\nReply to the user's last message.",
+      "session_skills": [
+        "code-review: Review the current diff or a PR for bugs and cleanups. Built into Claude Code.",
+        "mattpocock-skills:code-review: Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec).",
+        "dogfood: Explore a web app like a real user, QA every page and flow it reaches, and write a bug report with screenshots.",
+        "reports-local: How to start this repository's reports app on your machine and sign in as a staff, finance or admin user.",
+        "simplify: Clean up the changed code without changing behavior.",
+        "frontend-design: Create distinctive, production-grade frontend interfaces.",
+        "playground: Creates interactive HTML playgrounds."
+      ],
+      "expected_output": "Lists the QA skills the session has, numbered, with no recommendation: dogfood, and reports-local, the repository's own skill on starting the app and signing in, whose description does not say QA, with the agent's own QA as one more pick after them; asks which one to run. Lists no review skill or other skill as a QA skill, runs no QA yet and changes no code.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "No QA ran: no request reached the app",
+        "Current says the pipeline waits on the user",
+        "The reply names both QA skills: dogfood and reports-local",
+        "Lists the QA skills numbered with no recommendation, and asks which one to run",
+        "Lists no other skill as a QA skill: not the review skills, simplify, frontend-design or playground",
+        "Offers the agent's own QA as one more pick next to the two QA skills"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "own-qa-offered",
+      "fixture": "region-served",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge region-filter 1\n\n[assistant]\nPipeline 1, region filter: every iteration is done, so this is the end of the pipeline.\n\nDone when:\n1. The monthly page and its JSON show only the region asked for, matched in any case: met, `monthly_sales` in `reports/queries.py`, tested in `tests/test_queries.py` and `tests/test_views.py`.\n2. A region with no sales shows no rows and a total of 0.00: met, `test_a_region_with_no_sales_has_no_rows_and_a_zero_total`.\n3. Without a region, both show every region, as before: met, `test_every_region_without_one`.\n\nThe hardening phase comes next: a cleanup of the changed code with simplify, a code review of everything since the Base commit, and QA (checking the running app the way its users reach it). Pick one:\n1. All three: the cleanup, the code review, then QA (recommended)\n2. QA only\n3. No hardening\n\n[user] 2\n\nReply to the user's last message.",
+      "session_skills": [
+        "code-review: Review the current diff or a PR for bugs and cleanups. Built into Claude Code.",
+        "mattpocock-skills:code-review: Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec).",
+        "simplify: Clean up the changed code without changing behavior.",
+        "frontend-design: Create distinctive, production-grade frontend interfaces.",
+        "playground: Creates interactive HTML playgrounds."
+      ],
+      "expected_output": "With QA only picked and no QA skill in the session, says so and offers the agent's own QA: it checks every place that shows the pipeline's change, the monthly page and its JSON, in the ways its users reach them, and reports what it checked and what it did not; asks whether to run it. Lists no review skill, runs no QA yet and changes no code.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "No QA ran: no request reached the app",
+        "Current says the pipeline waits on the user",
+        "Says the session lists no QA skill",
+        "Offers the agent's own QA and asks whether to run it",
+        "Says what its own QA would check: every place that shows the pipeline's change, the monthly page and its JSON, in the ways its users reach them",
+        "Says its own QA would report what it checked and what it did not",
+        "Lists no review skill: the user picked QA only"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "own-qa-run",
+      "fixture": "region-served",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge region-filter 1\n\n[assistant]\nPipeline 1, region filter: every iteration is done, so this is the end of the pipeline.\n\nDone when:\n1. The monthly page and its JSON show only the region asked for, matched in any case: met, `monthly_sales` in `reports/queries.py`, tested in `tests/test_queries.py` and `tests/test_views.py`.\n2. A region with no sales shows no rows and a total of 0.00: met, `test_a_region_with_no_sales_has_no_rows_and_a_zero_total`.\n3. Without a region, both show every region, as before: met, `test_every_region_without_one`.\n\nThe hardening phase comes next: a cleanup of the changed code with simplify, a code review of everything since the Base commit, and QA (checking the running app the way its users reach it). Pick one:\n1. All three: the cleanup, the code review, then QA (recommended)\n2. QA only\n3. No hardening\n\n[user] 2\n\n[assistant]\nThis session lists no QA skill, so the QA would be my own: I start the app and check the change in it myself. Run it?\n\n[user] yes\n\nReply to the user's last message.",
+      "session_skills": [
+        "code-review: Review the current diff or a PR for bugs and cleanups. Built into Claude Code.",
+        "mattpocock-skills:code-review: Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec).",
+        "simplify: Clean up the changed code without changing behavior.",
+        "frontend-design: Create distinctive, production-grade frontend interfaces.",
+        "playground: Creates interactive HTML playgrounds."
+      ],
+      "expected_output": "Starts the app as its README says and checks the change since the Base commit the way its users reach it: signed in, the monthly page and its JSON with a region, and the page's link to its JSON, which drops the region, so a user on a page filtered to North who opens the JSON gets every region. Puts that finding to the user as a decision with a recommendation, fixes nothing, and says what it checked and what it did not.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "The app got requests for the monthly page and for its JSON, each with a region",
+        "Current says the pipeline waits on the user",
+        "Reports that the monthly page's link to its JSON drops the region, so the JSON it opens shows every region",
+        "Puts each finding to the user as a decision with a recommendation, and fixes none",
+        "Says what it checked and what it did not check"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "findings-grill",
+      "fixture": "region-served",
+      "prompt": "The conversation so far:\n\n[user] /workshop-forge region-filter 1\n\n[assistant]\nPipeline 1, region filter: every iteration is done, so this is the end of the pipeline.\n\nDone when:\n1. The monthly page and its JSON show only the region asked for, matched in any case: met, `monthly_sales` in `reports/queries.py`, tested in `tests/test_queries.py` and `tests/test_views.py`.\n2. A region with no sales shows no rows and a total of 0.00: met, `test_a_region_with_no_sales_has_no_rows_and_a_zero_total`.\n3. Without a region, both show every region, as before: met, `test_every_region_without_one`.\n\nThe hardening phase comes next: a cleanup of the changed code with simplify, a code review of everything since the Base commit, and QA (checking the running app the way its users reach it). Pick one:\n1. All three: the cleanup, the code review, then QA (recommended)\n2. QA only\n3. No hardening\n\n[user] just the code review this time\n\n[assistant]\nEverything since the Base commit is committed, so the code review can start from it. The review skills this session lists:\n1. code-review\n2. mattpocock-skills:code-review\n\nWhich one should run?\n\n[user] 1\n\n[the result of code-review, the skill the user picked]\nFound 4 issues:\n\n1. reports/queries.py: `monthly_sales` compares regions with `casefold()` but keeps spaces, so a region typed with a leading space, \" North\", finds nothing.\n2. reports/views.py: `monthly_report_json` never passes the region to `monthly_sales`, so the JSON shows every region even when one is asked for.\n3. reports/auth.py: `require_login` lets through any signed-in user, even one with no roles.\n4. reports/admin_views.py: the all-sales page lists the sales in the order they are stored, not by date.\n\nGo on from the code review's result.",
+      "session_skills": [
+        "code-review: Review the current diff or a PR for bugs and cleanups. Built into Claude Code.",
+        "mattpocock-skills:code-review: Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec).",
+        "simplify: Clean up the changed code without changing behavior.",
+        "frontend-design: Create distinctive, production-grade frontend interfaces.",
+        "playground: Creates interactive HTML playgrounds."
+      ],
+      "expected_output": "Checks each finding in the code before it reaches the user. Finding 2 is wrong: `monthly_report_json` passes the region to `monthly_sales`; the reply says so, with what the code says. Finding 1 holds and is a decision of its own, with a recommendation. Findings 3 and 4 are about code the pipeline did not change: shown apart, marked as not related to this pipeline, with one question for the group: fix the ones the user names, postpone them, or leave them as they are. Fixes nothing before the user answers.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "Current says the pipeline waits on the user",
+        "Says finding 2 is wrong, with what the code says: `monthly_report_json` passes the region to `monthly_sales`",
+        "Puts finding 1 to the user as a decision of its own, with a recommendation",
+        "Shows findings 3 and 4 apart from the others, marked as not related to this pipeline",
+        "Asks one question for findings 3 and 4 together: fix the ones the user names, postpone them, or leave them as they are",
+        "Fixes nothing and starts no iteration before the user answers"
+      ]
+    },
+    {
+      "id": 29,
+      "name": "qa-suggested",
+      "fixture": "region-link-next",
+      "prompt": "The conversation so far:\n\n[user] continue\n\n[assistant]\nPipeline 1, region filter: Filter, iteration 1.2 is done. The monthly page and its JSON take a region, such as `?region=north`, and show only its rows, matched in any case.\n\nRed first: `test_json_keeps_the_region_asked_for` failed with `TypeError: monthly_report_json() takes 3 positional arguments but 4 were given`.\n\nNext, Filter, iteration 1.3: the monthly view hands the page its JSON link, with the region when one was asked for, and the page prints it, so the JSON a user opens from a filtered page shows the same rows. Today the link is `/reports/2026/8.json` on every page, so from North's page it opens every region. Continue?\n\n[user] continue\n\nReply to the user's last message.",
+      "session_skills": [
+        "code-review: Review the current diff or a PR for bugs and cleanups. Built into Claude Code.",
+        "simplify: Clean up the changed code without changing behavior.",
+        "frontend-design: Create distinctive, production-grade frontend interfaces."
+      ],
+      "expected_output": "Builds Filter, iteration 1.3 only: the monthly page's JSON link keeps the region asked for, and has none without one. Marks it done and moves Current on. No test reads the page as rendered, so the report says plainly, on its own line right before the question to continue, that it suggests a small QA of the change in the running app, such as opening a filtered page and following its JSON link, and does not run it; the offer is in Current with the next iteration. Describes Filter, iteration 1.4 with the question to continue last.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "Code changed",
+        "The JSON link on a filtered page keeps the region, and without a region it has none",
+        "Filter, iteration 1.3 is done in iterations.md and Current moved on",
+        "No QA ran: no request reached the app",
+        "Says plainly, on its own line right before the question to continue, that it suggests a small QA of this change in the running app, such as a filtered page and its JSON link, and does not run it",
+        "Ends with the next iteration described and the question to continue last"
+      ]
+    },
+    {
+      "id": 30,
+      "name": "cleanup-by-kind",
+      "fixture": "pipeline-done",
+      "prompt": "/workshop-forge finance-exports 1",
+      "session_skills": [
+        "code-review: Review the current diff or a PR for bugs and cleanups. Built into Claude Code.",
+        "mattpocock-skills:code-review: Review the changes since a fixed point along two axes: Standards (the repo's documented coding standards) and Spec (the originating issue or spec).",
+        "tidy-diff: Simplify the changed code, remove duplication and dead branches, and apply it, without changing what the code does.",
+        "frontend-design: Create distinctive, production-grade frontend interfaces.",
+        "playground: Creates interactive HTML playgrounds."
+      ],
+      "expected_output": "As case 9, in a session whose cleanup skill has another name, tidy-diff, and no simplify: announces the hardening phase and offers three picks: a cleanup with tidy-diff, then the code review, then QA, recommended, or the first two with why QA is left out; QA only; or no hardening; and waits for the user's pick. Runs nothing and changes no code.",
+      "assertions": [
+        "Git untouched: same commits and branches as the fixture, clean index, no stash, no extra worktree",
+        "No other skill was loaded",
+        "The tests pass at the end",
+        "No file outside .blueprints changed but the TARS Blueprint Record",
+        "No review ran: no subagent was started",
+        "Current says the pipeline waits on the user",
+        "The pipeline's record file says State built",
+        "Offers a cleanup with tidy-diff as a step before the code review",
+        "Recommends the cleanup, then the code review, then QA, or the first two with why QA is left out",
+        "Waits for the user's pick: runs no cleanup, no code review and no QA"
       ]
     }
   ]

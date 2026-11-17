@@ -39,7 +39,11 @@ review, up to 4 tasks moving at once, and 1,002 questions answered.
   ask, and a guard in both tools holds it to that.
 - **Records outlive tasks.** Each pipeline writes a record that you commit with the code: why it is the way it is,
   the decisions, the traps and the known issues. The next task reads it.
-- **A code review's findings become steps you pick**, each built and reviewed like any other step.
+- **Hardening at the end, QA when it helps.** A pipeline ends with a hardening phase: a cleanup, a code review and
+  QA, as your session's skills allow, recommended in that order; QA only; or none, your pick. QA checks the running
+  software the way its users reach it, with a QA skill the session has or the agent's own. Each finding is checked in
+  the code first and reaches you as a decision; each fix you take is a step like any other. After a step with a
+  significant change, the agent may suggest a small QA of it, which runs only if you ask.
 - **Claude Code and Codex.** The same skills and files work in both. In Claude Code, an optional mod adds a status
   line and a pane with the running pipeline.
 
@@ -159,8 +163,8 @@ For work too big for one session, such as an engineering task, a research topic 
 2. `/workshop-forge <task> <pipeline>`, such as `/workshop-forge exports 2`, builds that pipeline one iteration per turn. Each
    turn ends with a report and the next iteration; your "continue" approves the one done and starts the next. It does
    not commit; you commit when you like. At the end it checks the result against the scope's Done when list and
-   guides you to a review. `/workshop-forge` alone, after a session that discussed the work, starts a pipeline from that
-   session, without workshop-craft.
+   offers the hardening phase: a cleanup, a code review and QA, QA only, or none. `/workshop-forge` alone, after a session that
+   discussed the work, starts a pipeline from that session, without workshop-craft.
 
 Each task in a git repository also gets a TARS Blueprint Record, the folder `docs/tars-reports/<task>/`: why its code
 is the way it is (the decisions with their reasons, what was tried and dropped), its traps, known issues and postponed

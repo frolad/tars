@@ -20,6 +20,7 @@ HERE = Path(__file__).parent
 BP = Path(".blueprints/finance-exports")
 P1 = BP / "pipelines/01-csv-downloads"
 STORE = Path(".blueprints/sales-sqlite/pipelines/01-sales-sqlite")
+REGION = Path(".blueprints/region-filter/pipelines/01-region-filter")
 SNAPSHOT_MARK = "workshop-forge-snapshot"
 SKILLS_READ = ("/skills/sttp/SKILL.md", "/skills/sttp-software-engineering/SKILL.md", "/skills/workshop-grill/SKILL.md",
                "/skills/sttp-software-coding/SKILL.md", "/skills/sttp-software-testing/")
@@ -115,6 +116,25 @@ with tempfile.TemporaryDirectory() as tmp:
 print(json.dumps(out))
 '''
 
+# Runs inside a region-served repo: renders the monthly page with and without a region through the app's own
+# renderer, and lists the links to its JSON.
+LINK_PROBE = r'''
+import json, re, sys
+from pathlib import Path
+sys.path.insert(0, ".")
+out = {}
+try:
+    import serve
+    for region in ("north", None):
+        r = serve.views.monthly_report({"user": {"roles": ["staff"]}, "sales": serve.SALES}, 2026, 8,
+                                       **({"region": region} if region else {}))
+        html = serve.render((Path("templates") / r["template"]).read_text(), r["context"])
+        out[str(region)] = re.findall(r'href="([^"]*\.json[^"]*)"', html)
+except Exception as e:
+    out = {"error": f"{type(e).__name__}: {e}"}
+print(json.dumps(out))
+'''
+
 
 def check(text, passed, evidence):
     return {"text": text, "passed": bool(passed), "evidence": evidence}
@@ -154,7 +174,8 @@ def record_files(repo):
 
 def outside_blueprints_diff(base, repo):
     """The files that differ from the fixture outside .blueprints, but for the TARS Blueprint Records."""
-    p = subprocess.run(["diff", "-rq", "-x", ".git", "-x", "__pycache__", "-x", ".blueprints", str(base), str(repo)],
+    p = subprocess.run(["diff", "-rq", "-x", ".git", "-x", "__pycache__", "-x", ".blueprints", "-x", "serve.log",
+                        str(base), str(repo)],
                        capture_output=True, text=True)
     records = record_files(repo)
     lines = []
@@ -168,6 +189,26 @@ def outside_blueprints_diff(base, repo):
     if p.returncode > 1:  # diff could not read a file: its message fails the check
         lines += p.stderr.splitlines()
     return "\n".join(lines).replace(str(base), "<fresh>").replace(str(repo), "<repo>").strip()
+
+
+def qa_ran(run, repo):
+    """The traces a QA run leaves: the app's logged requests, and commands that start serve.py or read or delete its
+    log, since a run can delete serve.log after it."""
+    reqs = served(repo)
+    cmds = [e["command"] for e in json.load(open(run / "events.json")) if e.get("kind") == "bash"
+            and re.search(r"python3?\s+(\S*/)?serve\.py\b|serve\.log|ThreadingHTTPServer|serve\.Handler", e["command"])]
+    return reqs, cmds
+
+
+def served(repo):
+    """[(method, path, query, status)] of the requests the app of a region-served repo logged in serve.log."""
+    log = repo / "serve.log"
+    out = []
+    for line in log.read_text().splitlines() if log.exists() else []:
+        method, target, status = (line.split(" ") + ["", ""])[:3]
+        path, _, query = target.partition("?")
+        out.append((method, path, query, status))
+    return out
 
 
 def blocks(path):
@@ -394,7 +435,7 @@ def grade(run, case):
         out.append(check("The Releases line and the work map's wait still name Access, iteration 1.1, and not its part "
                          "1.1.b", len(named) == 2 and whole, f"{named or 'no such line'}"[:240]))
         out += [in_order(rows), rows_kept("Every row the plan had is still there under its name", rows, table(base, P1))]
-    if case in (2, 7, 9, 13, 16, 18):
+    if case in (2, 7, 9, 13, 16, 18, 23, 24, 25, 26, 27, 30):
         text = ("No file outside .blueprints changed but the TARS Blueprint Record" if case != 7
                 else "No file outside .blueprints changed but the TARS Blueprint Record, .gitignore included")
         out.append(check(text, not diff, diff or "no file outside .blueprints differs from the fixture"))
@@ -511,21 +552,10 @@ def grade(run, case):
         out.append(check("No file written in the folder", not new, f"new files: {new or 'none'}"))
         out.append(check("The reply suggests a folder for the blueprint", re.search(r"folder|directory", reply, re.I),
                          "a folder is named" if re.search(r"folder|directory", reply, re.I) else "no folder named"))
-    if case == 9:
+    if case in (9, 23, 30):
         tools = json.load(open(run / "metrics.json")).get("tool_calls", {})
         agents = tools.get("Agent", 0) + tools.get("Task", 0)
         out.append(check("No review ran: no subagent was started", not agents, f"Agent tool calls: {agents}"))
-        # A sentence that starts with "Commit" asks for one, but "Commit point:" only names where one fits.
-        m = re.search(r"[^.\n]{0,80}(\b(suggest|recommend)\w*\s+(a\s+|you\s+)?commit|"
-                      r"\b(you\s+(can|could|may|might|should)|please|worth)\s+commit|"
-                      r"\bcommit\w*\b[^.\n]{0,60}\b(before the review|first)\b|"
-                      r"\bbefore the review,?\s+commit\b|(?:^|(?<=[.!?]\s))\**commit\b(?!\s+point\b))[^.\n]{0,80}",
-                      reply, re.I | re.M)
-        out.append(check("The reply suggests a commit", m, m.group(0).strip() if m else "no commit suggested"))
-        builtin = re.search(r"(?<![\w:-])/?code-review\b", reply.replace("mattpocock-skills:code-review", ""))
-        matt = "mattpocock" in reply.lower()
-        out.append(check("The reply names both review skills the session lists", builtin and matt,
-                         f"built-in code-review: {bool(builtin)}; mattpocock-skills:code-review: {matt}"))
         current = blocks(repo / P1 / "iterations.md").get("## Current", "")
         out.append(check("Current says the pipeline waits on the user",
                          re.search(r"wait\w*\s+(on|for)\s+(the\s+)?user", current, re.I), current[:160] or "no Current"))
@@ -533,6 +563,18 @@ def grade(run, case):
         state = re.search(r"^State:.*$", record.read_text(), re.M) if record.exists() else None
         out.append(check("The pipeline's record file says State built", state and state.group(0).startswith("State: built"),
                          state.group(0) if state else "no record file or no State line"))
+    if case == 23:
+        # A sentence that starts with "Commit" asks for one, but "Commit point:" only names where one fits.
+        m = re.search(r"[^.\n]{0,80}(\b(suggest|recommend)\w*\s+(a\s+|you\s+)?commit|"
+                      r"\b(you\s+(can|could|may|might|should)|please|worth)\s+commit|"
+                      r"\bcommit\w*\b[^.\n]{0,60}\b(before the (code )?review|first)\b|"
+                      r"\bbefore the (code )?review,?\s+commit\b|(?:^|(?<=[.!?]\s))\**commit\b(?!\s+point\b))[^.\n]{0,80}",
+                      reply, re.I | re.M)
+        out.append(check("The reply suggests a commit", m, m.group(0).strip() if m else "no commit suggested"))
+        builtin = re.search(r"(?<![\w:-])/?code-review\b", reply.replace("mattpocock-skills:code-review", ""))
+        matt = "mattpocock" in reply.lower()
+        out.append(check("The reply names both review skills the session lists", builtin and matt,
+                         f"built-in code-review: {bool(builtin)}; mattpocock-skills:code-review: {matt}"))
     if case in (10, 11):
         out += [code_changed, red_check(run)]
         sales = csv_views(pr, False)
@@ -631,6 +673,36 @@ def grade(run, case):
         state = re.search(r"^State:.*$", record.read_text(), re.M) if record.exists() else None
         out.append(check("The pipeline's record file's State is done", state and state.group(0).startswith("State: done"),
                          state.group(0) if state else "no record file or no State line"))
+    if case in (24, 25, 26, 27):
+        current = blocks(repo / REGION / "iterations.md").get("## Current", "")
+        out.append(check("Current says the pipeline waits on the user",
+                         re.search(r"wait\w*\s+(on|for)\s+(the\s+)?user", current, re.I), current[:160] or "no Current"))
+    if case in (24, 25):
+        reqs, cmds = qa_ran(run, repo)
+        out.append(check("No QA ran: no request reached the app", not reqs and not cmds,
+                         f"requests: {reqs[:3] or 'none'}; commands: {[c[:80] for c in cmds[:2]] or 'none'}"))
+    if case == 24:
+        named = [s for s in ("dogfood", "reports-local") if s in reply]
+        out.append(check("The reply names both QA skills: dogfood and reports-local", len(named) == 2,
+                         f"named: {named or 'neither'}"))
+    if case == 26:
+        reqs = served(repo)
+        ok = lambda json_: any(m == "GET" and re.fullmatch(r"/reports/\d{4}/\d{1,2}" + (r"\.json" if json_ else ""), path)
+                               and "region=" in q and s == "200" for m, path, q, s in reqs)
+        out.append(check("The app got requests for the monthly page and for its JSON, each with a region",
+                         ok(False) and ok(True), f"page: {ok(False)}; JSON: {ok(True)}; requests: {len(reqs)}"))
+    if case == 29:
+        out.append(code_changed)
+        links = probe(repo, LINK_PROBE)
+        north, every = links.get("north") or [], links.get("None") or []
+        ok = (north and all(re.search(r"region=north", l, re.I) for l in north)
+              and every and not any("region" in l for l in every))
+        out.append(check("The JSON link on a filtered page keeps the region, and without a region it has none", ok,
+                         json.dumps(links)[:240]))
+        out.append(done_and_moved(repo, "Filter", "1.3", REGION))
+        reqs, cmds = qa_ran(run, repo)
+        out.append(check("No QA ran: no request reached the app", not reqs and not cmds,
+                         f"requests: {reqs[:3] or 'none'}; commands: {[c[:80] for c in cmds[:2]] or 'none'}"))
     if case == 15:
         out += [code_changed, red_check(run)]
         sale = probe(repo, INTAKE_PROBE)
@@ -718,6 +790,9 @@ def grade(run, case):
 if __name__ == "__main__":
     it = Path(sys.argv[1])
     for run in sorted(it.glob("eval-*/*/run-*")):
-        if (run / "outputs/final.md").exists():
-            p, t = grade(run, int(run.parent.parent.name.split("-")[1]))
+        case = int(run.parent.parent.name.split("-")[1])
+        if case not in EVALS:  # a case taken out of the suite since the run
+            print(f"{run.relative_to(it)}: case {case} is no longer in evals.json, not graded")
+        elif (run / "outputs/final.md").exists():
+            p, t = grade(run, case)
             print(f"{run.relative_to(it)}: {p}/{t}")

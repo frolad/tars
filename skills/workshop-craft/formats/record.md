@@ -53,9 +53,9 @@ State: <in progress | built | done | abandoned> on <branch>.
 - The first two lines of each file never change. The line under the heading travels with the file to readers who
   have no TARS.
 - State: in progress from the pipeline's first iteration; built once every iteration is done, while the end of the
-  pipeline runs (the Done when check, the glossary merge, the review), and in progress again while an iteration it
-  adds runs; done at the end of the pipeline; abandoned only when the developer says the pipeline or its task is
-  dropped, with why on the same line. It names the branch the file is on. The task has no State of its own.
+  pipeline runs (the Done when check, the glossary merge, the hardening phase), and in progress again while an
+  iteration it adds runs; done at the end of the pipeline; abandoned only when the developer says the pipeline or its
+  task is dropped, with why on the same line. It names the branch the file is on. The task has no State of its own.
 - Why, Planning decisions and Not in this task come from the task's plan: workshop-craft's scope and knowledge, or
   the session a pipeline was started from. Each holds what a reader needs to read this file: the task's why and this
   pipeline's part in it, the planning decisions this pipeline's work rests on, and what was left out that a reader of
@@ -68,8 +68,8 @@ State: <in progress | built | done | abandoned> on <branch>.
   file of the pipeline that ran the merge, a planning decision included.
 - Traps are facts of any kind the code does not make obvious: behaviour of a library, a service, the data or the
   repository's own code that someone debugging would trip on.
-- Known issues: open bugs, review findings not fixed, checks that never ran, readers of the data nobody checked. A
-  problem found and not fixed goes here; Postponed is work left for later, each item with its why.
+- Known issues: open bugs, code review and QA findings not fixed, checks that never ran, readers of the data nobody
+  checked. A problem found and not fixed goes here; Postponed is work left for later, each item with its why.
 - Not in this task: entries of the scope's Out of scope, each with its why.
 - A section with nothing in it is left out. Every entry is a list item.
 

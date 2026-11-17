@@ -48,6 +48,11 @@ WAITS = "Writers, iteration 3.1 is not done in iterations.md and Current says th
 UNCHANGED = "No file outside .blueprints changed but the TARS Blueprint Record"
 IN_BOTH = "A sale a till posts is stored in SQLite and in the file"
 STORE_KEPT = "reports/store.py is as the fixture left it: the write to both stores needs no change in the file store"
+REQUESTED = "The app got requests for the monthly page and for its JSON, each with a region"
+NO_QA = "No QA ran: no request reached the app"
+QA_NAMED = "The reply names both QA skills: dogfood and reports-local"
+LINK = "The JSON link on a filtered page keeps the region, and without a region it has none"
+RENDER = 'return render("monthly.html", rows=rows, total=total_cents(rows), year=year, month=month, region=region)'
 INTAKE_MOVED = '''from datetime import date
 
 from .sqlite_store import add_sale
@@ -73,7 +78,7 @@ def record_sale(payload):
 '''
 
 
-def graded(case, reply, change=None):
+def graded(case, reply, change=None, events=()):
     """The checks of one run of the case, by text: the case's fixture repo, untouched or as `change` leaves it, no
     command run, and the reply."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -82,13 +87,27 @@ def graded(case, reply, change=None):
         (run / "outputs/final.md").write_text(reply)
         (run / "outputs/commands.txt").write_text("")
         (run / "metrics.json").write_text(json.dumps({"tool_calls": {}}))
-        (run / "events.json").write_text("[]")
+        (run / "events.json").write_text(json.dumps(list(events)))
         subprocess.run(["bash", str(HERE / "fixtures/make_fixture.sh"), grader.EVALS[case]["fixture"],
                         str(run / "repo")], check=True, capture_output=True)
         if change:
             change(run / "repo")
         grader.grade(run, case)
         return {c["text"]: c["passed"] for c in json.load(open(run / "grading.json"))["expectations"]}
+
+
+def served_log(text):
+    """Writes the app's request log of a region-served repo."""
+    return lambda repo: (repo / "serve.log").write_text(text)
+
+
+def link_kept(repo):
+    """The monthly view hands the page its JSON link, with the region when one was asked for."""
+    view = repo / "reports/views.py"
+    view.write_text(view.read_text().replace(RENDER, 'json_url = f"/reports/{year}/{month}.json" + (f"?region={region}" '
+                                             'if region else "")\n    ' + RENDER[:-1] + ", json_url=json_url)"))
+    page = repo / "templates/monthly.html"
+    page.write_text(page.read_text().replace('href="/reports/{{ year }}/{{ month }}.json"', 'href="{{ json_url }}"'))
 
 
 def plan_with(*changes):
@@ -189,11 +208,56 @@ class AddedIterations(unittest.TestCase):
 class Grade(unittest.TestCase):
     def test_a_commit_asked_for_before_the_review_is_a_suggestion(self):
         reply = "Before the review, commit the pipeline's work, because some review skills read only commits."
-        self.assertTrue(graded(9, reply)[COMMIT])
+        self.assertTrue(graded(23, reply)[COMMIT])
+
+    def test_a_commit_asked_for_before_the_code_review_is_a_suggestion(self):
+        reply = "Two iterations are not committed yet: commit them before the code review, since some read only commits."
+        self.assertTrue(graded(23, reply)[COMMIT])
 
     def test_a_commit_put_off_is_not_a_suggestion(self):
         reply = "The commit and the review wait until both drift tests are done. Continue with iteration 4.1?"
-        self.assertFalse(graded(9, reply)[COMMIT])
+        self.assertFalse(graded(23, reply)[COMMIT])
+
+    def test_a_signed_in_page_and_json_with_a_region_are_both_requested(self):
+        log = ("GET /login?as=staff 302\nGET /reports/2026/8?region=north 200\n"
+               "GET /reports/2026/8.json?region=North 200\n")
+        checks = graded(26, "", served_log(log))
+        self.assertEqual((checks.get(REQUESTED), checks.get(UNCHANGED)), (True, True))
+
+    def test_the_page_alone_is_not_both_requested(self):
+        self.assertIs(graded(26, "", served_log("GET /reports/2026/8?region=north 200\n")).get(REQUESTED), False)
+
+    def test_a_refused_json_request_does_not_count(self):
+        log = "GET /reports/2026/8?region=north 200\nGET /reports/2026/8.json?region=north 403\n"
+        self.assertIs(graded(26, "", served_log(log)).get(REQUESTED), False)
+
+    def test_a_request_to_the_app_before_the_pick_is_qa_run(self):
+        self.assertIs(graded(24, "", served_log("GET /reports/2026/8 200\n")).get(NO_QA), False)
+
+    def test_both_qa_skills_named_with_their_names(self):
+        reply = "The QA skills this session lists:\n1. dogfood\n2. reports-local\n\nWhich one should run?"
+        self.assertTrue(graded(24, reply)[QA_NAMED])
+
+    def test_a_json_link_that_keeps_the_region_only_when_one_was_asked_for(self):
+        self.assertTrue(graded(29, "", link_kept)[LINK])
+
+    def test_the_json_link_as_the_fixture_has_it_drops_the_region(self):
+        self.assertIs(graded(29, "")[LINK], False)
+
+    def test_a_request_to_the_app_after_the_iteration_is_qa_run(self):
+        self.assertIs(graded(29, "", served_log("GET /reports/2026/8?region=north 200\n")).get(NO_QA), False)
+
+    def test_an_app_started_and_its_log_deleted_is_qa_run(self):
+        events = [{"kind": "bash", "command": "cd <repo> && python3 /tmp/check.py; cat serve.log; rm -f serve.log",
+                   "result": ""}]
+        self.assertIs(graded(29, "", events=events).get(NO_QA), False)
+
+    def test_reading_serve_py_is_no_qa_run(self):
+        events = [{"kind": "bash", "command": "cd <repo> && cat -n serve.py", "result": ""}]
+        self.assertTrue(graded(29, "", events=events).get(NO_QA))
+
+    def test_one_qa_skill_named_is_not_both(self):
+        self.assertIs(graded(24, "The QA skill this session lists: dogfood. Run it?")[QA_NAMED], False)
 
     def test_a_sale_the_moved_intake_stores_is_in_sqlite_only(self):
         self.assertTrue(graded(15, "", lambda repo: (repo / "reports/intake.py").write_text(INTAKE_MOVED)).get(STORED))

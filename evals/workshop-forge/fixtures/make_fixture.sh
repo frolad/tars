@@ -22,14 +22,23 @@
 # list CSV, is next. The moved writer still writes the monthly report's header and columns only.
 # access-split: ready after its first iteration, the release point for pipeline 2, was split the same way: 1.1 is
 # SPLIT, its part 1.1.a, the finance role, is done and committed, and its part 1.1.b, the access rule, is next.
+# region-served: region-done whose app runs on a local port, serve.py, committed before the pipeline's Base, with
+# every request logged to serve.log; the end of the pipeline waits on the user's pick of the hardening phase.
+# region-fixed: region-served after the hardening's code review: the one fix taken from it, a region typed with
+# spaces around it, is done and committed, and QA is next.
+# region-link-next: region-served with two more iterations planned, the page's JSON link that keeps the region, next,
+# and the region in the page's heading; the record says in progress.
 set -euo pipefail
 fixture=$1; dir=$2
-broken=; record=; tagged=; moved=; split=
+broken=; record=; tagged=; moved=; split=; served=; fixed=; linknext=
 if [[ $fixture == broken-helper ]]; then broken=1; fixture=csv-done; fi
 if [[ $fixture == record ]]; then record=1; fixture=access-done; fi
 if [[ $fixture == tagged ]]; then tagged=1; fixture=access-done; fi
 if [[ $fixture == writer-moved ]]; then moved=1; fixture=inline-csv; fi
 if [[ $fixture == access-split ]]; then split=1; fixture=ready; fi
+if [[ $fixture == region-served ]]; then served=1; fixture=region-done; fi
+if [[ $fixture == region-fixed ]]; then served=1; fixed=1; fixture=region-done; fi
+if [[ $fixture == region-link-next ]]; then served=1; linknext=1; fixture=region-done; fi
 here=$(cd "$(dirname "$0")" && pwd)
 if [[ $fixture == research ]]; then
   rm -rf "$dir"; mkdir -p "$dir"; cd "$dir"
@@ -716,6 +725,104 @@ if [[ $fixture == base ]]; then
   exit 0
 fi
 
+if [[ -n $served ]]; then
+  cat > serve.py <<'PY'
+"""Serves the reports on a local port: python3 serve.py [port]. Without a port it takes a free one and prints the
+address. Each request is logged to serve.log."""
+import html
+import re
+import sys
+from datetime import date
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
+
+from reports import admin_views, views
+from reports.auth import Forbidden
+from reports.models import Sale
+from reports.money import format_eur
+
+SALES = [Sale(1, "North", "Widget", 3, 1234, date(2026, 8, 3)), Sale(2, "South", "Gadget", 1, 500, date(2026, 8, 9)),
+         Sale(3, "North", "Gadget", 2, 800, date(2026, 8, 12)), Sale(4, "West", "Widget", 1, 300, date(2026, 7, 30))]
+HERE = Path(__file__).parent
+
+
+def value(expr, context):
+    name, _, filter_ = expr.partition("|")
+    obj = context
+    for part in name.strip().split("."):
+        obj = obj[part] if isinstance(obj, dict) else getattr(obj, part)
+    return format_eur(obj) if filter_.strip() == "eur" else obj
+
+
+def render(text, context):
+    def loop(m):
+        var, seq, body = m.groups()
+        return "".join(render(body, {**context, var: item}) for item in value(seq, context))
+    text = re.sub(r"{% for (\w+) in ([\w.]+) %}(.*?){% endfor %}", loop, text, flags=re.S)
+    return re.sub(r"{{ (.+?) }}", lambda m: html.escape(str(value(m.group(1), context))), text)
+
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        url = urlsplit(self.path)
+        params = {k: v[0] for k, v in parse_qs(url.query).items()}
+        if url.path == "/login":
+            self.send_response(302)
+            self.send_header("Set-Cookie", f"role={params.get('as', 'staff')}; Path=/")
+            self.send_header("Location", "/")
+            self.end_headers()
+            return
+        cookie = dict(c.strip().split("=", 1) for c in (self.headers.get("Cookie") or "").split(";") if "=" in c)
+        request = {"sales": SALES, **({"user": {"roles": [cookie["role"]]}} if "role" in cookie else {})}
+        try:
+            if url.path == "/":
+                r = {"body": '<a href="/reports/2026/8">Monthly report</a> <a href="/admin/sales">All sales</a>',
+                     "content_type": "text/html"}
+            elif m := re.fullmatch(r"/reports/(\d{4})/(\d{1,2})(\.json)?", url.path):
+                view = views.monthly_report_json if m.group(3) else views.monthly_report
+                r = view(request, int(m.group(1)), int(m.group(2)), **params)
+            elif url.path == "/admin/sales":
+                r = admin_views.all_sales(request, **params)
+            else:
+                return self.reply(404, "text/plain", "not found")
+        except Forbidden as e:
+            return self.reply(403, "text/plain", f"forbidden: {e}")
+        except TypeError as e:
+            return self.reply(400, "text/plain", f"bad request: {e}")
+        if "template" in r:
+            r = {"body": render((HERE / "templates" / r["template"]).read_text(), r["context"]),
+                 "content_type": "text/html"}
+        self.reply(200, r["content_type"], r["body"])
+
+    def reply(self, code, content_type, body):
+        data = body.encode()
+        self.send_response(code)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def log_request(self, code="-", size="-"):
+        with open(HERE / "serve.log", "a") as f:
+            f.write(f"{self.command} {self.path} {getattr(code, 'value', code)}\n")
+
+
+if __name__ == "__main__":
+    server = ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1]) if len(sys.argv) > 1 else 0), Handler)
+    print(f"Serving on http://127.0.0.1:{server.server_port}", flush=True)
+    server.serve_forever()
+PY
+  echo "serve.log" >> .gitignore
+  cat >> README.md <<'MD'
+
+Run the app: `python3 serve.py`, which prints the address it listens on. Sign in with `/login?as=staff` (or
+`finance`, `admin`). The monthly report is at `/reports/2026/8`, its JSON at `/reports/2026/8.json`, and the
+admin sales list at `/admin/sales`; query parameters go to the view as keyword arguments.
+MD
+  git add -A; git commit -qm "Serve the reports on a local port"
+fi
+
 echo ".blueprints/" >> .gitignore
 git add -A; git commit -qm "Ignore .blueprints"
 base_commit=$(git rev-parse HEAD)
@@ -870,6 +977,88 @@ Finance looks at one region at a time on the monthly report. The page and its JS
   (`reports/queries.py`, `reports/views.py`).
 MD
   git add docs; git commit -qm "Blueprint record: region filter"
+  if [[ -n $served ]]; then
+    python3 - "$fixed" "$linknext" <<'PY'
+import sys
+from pathlib import Path
+fixed, linknext = sys.argv[1] == "1", sys.argv[2] == "1"
+p = Path(".blueprints/region-filter/pipelines/01-region-filter/iterations.md"); t = p.read_text()
+old = """The end of the pipeline: every Done when item is met, everything since Base is committed, and the review
+(code-review) found one thing; waiting on the user's answer on finding 1."""
+new = ("""Review fixes, iteration 2.1: done; it was the only fix taken from the code review. The user picked code review
+then QA for the hardening phase: QA is next.""" if fixed else "Filter, iteration 1.3: NEXT; waits for nothing." if linknext
+       else """The end of the pipeline: every Done when item is met
+and everything since Base is committed; the hardening phase is offered, waiting on the user's pick.""")
+assert old in t
+t = t.replace(old, new)
+if linknext:
+    for old, new in [("- Without a region, both show every region, as before.\n",
+                      "- Without a region, both show every region, as before.\n"
+                      "- The monthly page's JSON link keeps the region asked for.\n"
+                      "- The monthly page names the region it shows.\n"),
+                     ("| Filter   | 1.2 | the page and its JSON | DONE   |\n",
+                      "| Filter   | 1.2 | the page and its JSON | DONE   |\n"
+                      "| Filter   | 1.3 | the JSON link         | NEXT   |\n"
+                      "| Filter   | 1.4 | region in the heading | PLANNED |\n"),
+                     ("- Iteration 1.2: the monthly page and its JSON take the region (`reports/views.py`).\n",
+                      "- Iteration 1.2: the monthly page and its JSON take the region (`reports/views.py`).\n"
+                      "- Iteration 1.3: the monthly view hands the page its JSON link, with the region when one was asked for,\n"
+                      "  and the page prints it, so the JSON a user opens from a filtered page shows the same rows\n"
+                      "  (`reports/views.py`, `templates/monthly.html`).\n"
+                      "- Iteration 1.4: the monthly page names the region it shows in its heading (`templates/monthly.html`).\n")]:
+        assert old in t, old
+        t = t.replace(old, new)
+    r = Path("docs/tars-reports/region-filter/01-region-filter.md")
+    r.write_text(r.read_text().replace("State: built on main.", "State: in progress on main."))
+    k = Path(".blueprints/region-filter/pipelines/01-region-filter/knowledge.md"); kt = k.read_text()
+    kt = kt.replace("""
+## Decisions
+""", """- The tests call the views and read what they return; no test fills in a template.
+  Source: tests/test_views.py, read 2026-10-21.
+- `serve.py` fills in a template's `{{ name }}` and `{% for %}` only, with no `if`: a value a page prints is computed
+  in its view. Source: serve.py, read 2026-10-21.
+
+## Decisions
+""", 1)
+    kt = kt.rstrip("\n") + """
+- The page's JSON link is built in the monthly view, with `?region=` only when a region was asked for, and the page
+  prints it; its test reads the link the view returns.
+  Why: the page's renderer has no `if`, and the tests read what the views return.
+  Rules out: an `if` in `serve.py`'s renderer; a test that fills in the page.
+  Decided by the user on 2026-10-21.
+"""
+    k.write_text(kt)
+if fixed:
+    t = t.replace("| Filter   | 1.2 | the page and its JSON | DONE   |\n",
+                  "| Filter   | 1.2 | the page and its JSON | DONE   |\n| Review fixes | 2.1 | spaces around a region | DONE |\n")
+    t = t.rstrip("\n") + """
+
+### Review fixes
+- Iteration 2.1: a region typed with spaces around it, such as " North", finds its rows (`reports/queries.py`).
+"""
+p.write_text(t)
+if fixed:
+    p = Path("reports/queries.py")
+    p.write_text(p.read_text().replace("s.region.casefold() != region.casefold()",
+                                       "s.region.casefold() != region.strip().casefold()"))
+    p = Path("tests/test_queries.py"); t = p.read_text()
+    t = t.replace('''
+
+if __name__ == "__main__":''', '''
+    def test_spaces_around_a_region_are_ignored(self):
+        self.assertEqual([r["region"] for r in monthly_sales(SALES, 2026, 8, " North ")], ["North"])
+
+
+if __name__ == "__main__":''')
+    p.write_text(t)
+    p = Path("docs/tars-reports/region-filter/01-region-filter.md")
+    p.write_text(p.read_text().rstrip("\n") + """
+- A region typed with spaces around it, such as " North", finds its rows (`reports/queries.py`).
+""")
+PY
+    if [[ -n $fixed ]]; then git add -A; git commit -qm "Review fixes, iteration 2.1: spaces around a region"; fi
+    if [[ -n $linknext ]]; then git add -A; git commit -qm "Blueprint record: region filter in progress"; fi
+  fi
   exit 0
 fi
 

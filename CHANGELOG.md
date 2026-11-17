@@ -2,6 +2,52 @@
 
 Changes from 0.7.0 on. Each version's section is also its GitHub release's text.
 
+## 0.7.4
+
+tars-mod goes to 0.7.4 with the plugin, with no change of its own.
+
+### Changes
+
+- `/workshop-forge` ends a pipeline with a hardening phase. After the Done when check and the glossary merge, it
+  offers three picks: every kind of check your session has a skill for, in the order cleanup (such as Claude Code's
+  simplify), code review, QA, recommended; QA only; or no hardening. An answer in your own words, such as the code
+  review alone, is taken as said. Before, the end of a pipeline suggested a commit and asked which review skill to
+  run.
+- The offer is built from the kinds of skills the session lists, not from their names, so a cleanup or review skill
+  released later, or one of your own, is offered by its kind. A skill of another kind that checks or improves the
+  change, such as a security review, joins the first pick. When the session lists no QA skill and the agent sees no
+  way to start the software, it may leave QA out of the first pick and says why.
+- A cleanup's changes are an iteration of their own, reviewed before the code review starts, so that the code review
+  reads the cleaned code.
+- QA is checking the running software the way its users reach it, such as pages in a browser, API calls or an MCP
+  server's tools; tests and reading the code are not QA. It starts once the fixes you took from the code review are
+  built. The agent lists the QA skills the session has, numbered, with no recommendation, and its own QA as one more
+  pick. A skill that tells how to start the app and sign in counts as a QA skill, whatever its description calls it.
+  The agent's own QA checks every place that shows the pipeline's change, in the ways its users reach it, and reports
+  what it checked and what it did not. After QA's fixes are built, the checks they touch run again.
+- The findings of the code review and of QA go through the mini grill. Each is checked in the code first, and a QA
+  finding in the running software too. A wrong one is shown with what the code says. Each one that holds is a
+  decision with a recommendation, and each fix you take is an iteration. Findings about code the pipeline did not
+  change are shown apart, with one question for the group: fix the ones you name, postpone them, or leave them; the
+  code review's and QA's each get their own. Before, such a finding was listed and not fixed.
+- After an iteration with a significant change, such as a page as its users see it, the report may suggest a small
+  QA of it, on its own line right before the question to continue. It runs only if you ask: the iteration then goes
+  on with the QA and the fixes for what it finds, and the next iteration waits. A plain "continue" runs the planned
+  iteration.
+- The task record's format names the hardening phase in State, and QA findings not fixed in Known issues.
+
+### For contributors
+
+- The workshop-forge evals have seven new cases on the hardening phase and the QA suggestion: `review-pick`,
+  `qa-skills`, `own-qa-offered`, `own-qa-run`, `findings-grill`, `qa-suggested` and `cleanup-by-kind`. Cases
+  `end-of-pipeline` and `task-done` go through the new offer, and `reorganization`, a pure move, checks that its
+  report suggests no QA.
+- Three fixtures run the eval repo as an app, `region-served`, `region-fixed` and `region-link-next`: `serve.py`
+  serves the monthly page, its JSON and the admin sales list on a free local port after a sign-in, and logs each
+  request to `serve.log`. The grader reads that log and the run's commands to tell whether a run reached the app,
+  since a run can delete the log.
+- The record of this version's task: `docs/tars-reports/hardening/`.
+
 ## 0.7.3
 
 TARS and its optional mod, tars-mod, are both at 0.7.3. Update the mod together with the plugin.

@@ -48,9 +48,9 @@ Base: <commit>, HEAD when the first iteration started.
 
 - Header: the goal; Done when, pointing to the scope's numbers (in a pipeline workshop-forge started without a scope,
   checkable lines instead); the iteration size; `Releases:` only when this pipeline releases another; `Base:`
-  only for code, written by workshop-forge when the first iteration starts, so the review at the end covers every commit
-  made since. `Record: off`, in a pipeline without a scope when the developer turns the record off (`layout.md`), is a
-  paragraph of its own after the header lines, with a blank line before it.
+  only for code, written by workshop-forge when the first iteration starts, so the code review and the QA at the end
+  cover every commit made since. `Record: off`, in a pipeline without a scope when the developer turns the record off
+  (`layout.md`), is a paragraph of its own after the header lines, with a blank line before it.
 - Status: one row per iteration, in the order of the lines below, with its category, its number, a title of a few
   words and its status. The status lives in this table only; a row changes in the turn its status does. A pipeline
   without categories keeps the Category column and leaves its cells empty.
