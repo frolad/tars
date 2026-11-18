@@ -49,7 +49,6 @@ $claude = "$env:USERPROFILE\.local\bin\claude.exe"
 if (-not (& $claude plugin list | Select-String "tars@tars")) {
   & $claude plugin marketplace add C:\tars
   & $claude plugin install tars@tars
-  & $claude plugin install tars-mod@tars
 }
 codex plugin marketplace add C:\tars
 codex plugin add tars@tars

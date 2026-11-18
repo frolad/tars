@@ -20,7 +20,7 @@ export function register(on, options) {
     const command = e.command.replace(/^tars:/, "")
     const arg = e.args.trim().toLowerCase()
     if (command === "workshop-forge-pane") {
-      if (!paned) return { text: "Pipeline pane is off: turn it on in /config (tars-mod → Pipeline pane)." }
+      if (!paned) return { text: "Pipeline pane is off: turn it on in /config (tars → Pipeline pane)." }
       // One still waiting undrawn for a wider terminal is not on screen: the command opens it.
       if ((await $.ui.panes()).some(pane => pane.id === PANE && pane.isPlaced)) {
         await $.ui.close({ id: PANE })
@@ -156,7 +156,7 @@ async function refresh($, shown) {
   }
 }
 
-// "primary · csv → CSV → header row · CURRENT · 1/3", after Claude Code's own "⚠ tars-mod:"; hooks/sttp.py keeps
+// "primary · csv → CSV → header row · CURRENT · 1/3", after Claude Code's own "⚠ tars:"; hooks/sttp.py keeps
 // the pause and the pipeline /workshop-forge named in ~/.tars/paused-<session> and ~/.tars/forge-<session>.
 async function statusLine($) {
   const dir = await tarsDir($)

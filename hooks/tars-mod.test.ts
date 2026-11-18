@@ -245,7 +245,7 @@ test("a subagent's turn start leaves the status line as it is", async ($, on) =>
 
 // The pipeline pane: /workshop-forge opens it, and it lists every iteration of the pipeline /workshop-forge named.
 const PANE = {
-  plugin: "tars-mod",
+  plugin: "tars",
   component: "Pane",
   requestId: "sttp-pipeline",
   props: {
@@ -429,6 +429,6 @@ test("off in /config, /workshop-forge-pane opens no pane and says where to turn 
     home(on)
     const { opened } = panes(on)
     expect(await run($, "workshop-forge-pane")).toBe(
-      "Pipeline pane is off: turn it on in /config (tars-mod → Pipeline pane).")
+      "Pipeline pane is off: turn it on in /config (tars → Pipeline pane).")
     expect(opened).toEqual([])
   })

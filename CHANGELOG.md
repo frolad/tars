@@ -2,6 +2,31 @@
 
 Changes from 0.7.0 on. Each version's section is also its GitHub release's text.
 
+## 0.8.0
+
+tars-mod is now part of tars: there is no separate tars-mod plugin any more.
+
+### Changes
+
+- In Claude Code, TARS comes with its mod: `/sttp-mode`, `/sttp-guards` and `/workshop-questions` answer at once, and
+  the status line and the Pipeline pane work as before. Their two `/config` switches, Status line and Pipeline pane,
+  are now under `tars`, and the status line starts with `⚠ tars:` instead of `⚠ tars-mod:`. Codex runs TARS as
+  before, without the mod.
+- Had `tars-mod@tars` installed? `/plugin marketplace update tars` moves it over to `tars`, with your `/config`
+  switches. From a clone, delete the old link: `rm ~/.claude/skills/tars-mod`.
+- TARS can be added in claude.ai, under Customize → Plugins, for Cowork and Chat. claude.ai refused it before,
+  because the plugin's folder held the mod's own manifest. In Cowork the hooks run: the rules load at session start
+  and before the first edit, `/tars:tars-doctor` and `/tars:sttp-guards` answer, and the git guard asks before a
+  commit. Cowork runs no mods, so it has no status line or pane. Chat runs no hooks, so there STTP applies only when
+  Claude picks its skill or you type `/tars:sttp`; Chat was not checked.
+- TARS has an icon, `.claude-plugin/icon.png`.
+
+### For contributors
+
+- The mod is `hooks/tars-mod.js`, with its tests in `hooks/tars-mod.test.ts`; `claude plugin test .` runs them.
+  Its `modules` entry is in `hooks/mod.json`, which only `.claude-plugin/plugin.json` names. Codex reads
+  `hooks/hooks.json` and skips every hook in a file with a `modules` key, so it never sees the mod.
+
 ## 0.7.5
 
 tars-mod goes to 0.7.5 with the plugin, with no change of its own.

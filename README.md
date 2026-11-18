@@ -44,7 +44,7 @@ review, up to 4 tasks moving at once, and 1,002 questions answered.
   software the way its users reach it, with a QA skill the session has or the agent's own. Each finding is checked in
   the code first and reaches you as a decision; each fix you take is a step like any other. After a step with a
   significant change, the agent may suggest a small QA of it, which runs only if you ask.
-- **Claude Code and Codex.** The same skills and files work in both. In Claude Code, an optional mod adds a status
+- **Claude Code and Codex.** The same skills and files work in both. In Claude Code, TARS's mod adds a status
   line and a pane with the running pipeline.
 
 ## Install
@@ -56,17 +56,16 @@ Claude Code:
 /plugin install tars@tars
 ```
 
-Optional, Claude Code only: the TARS mod answers `/sttp-mode`, `/sttp-guards` and `/workshop-questions` at once, pins a status
-line under the prompt and shows the pipeline `/workshop-forge` runs in a pane, which `/workshop-forge-pane` opens and
-closes (see Controls). TARS works the same without it.
+In Claude Code, TARS comes with its mod: it answers `/sttp-mode`, `/sttp-guards` and `/workshop-questions` at once,
+pins a status line under the prompt and shows the pipeline `/workshop-forge` runs in a pane, which
+`/workshop-forge-pane` opens and closes (see Controls). Codex runs TARS without it.
 
-```
-/plugin install tars-mod@tars
-```
+Installed `tars-mod@tars` before? It is part of `tars` now: `/plugin marketplace update tars` moves it over, with
+your `/config` switches.
 
 Installed it as `sttps` before? It is `tars` now: run `/plugin marketplace remove sttps`, then the install above.
 Your settings move with `mv ~/.sttps ~/.tars`. From a clone, replace the old `sttps` and `sttps-mod` links with the
-two below.
+one below.
 
 Claude Code, from a clone, so your edits and `git pull` apply at the next session start:
 
@@ -75,12 +74,12 @@ git clone https://github.com/frolad/tars.git
 cd tars
 mkdir -p ~/.claude/skills
 ln -s "$PWD" ~/.claude/skills/tars
-ln -s "$PWD/mods/tars-mod" ~/.claude/skills/tars-mod   # optional mod
 ```
 
 Claude Code loads every folder in `~/.claude/skills/` that has a `.claude-plugin/plugin.json` as a plugin, in every
-session, from where it is: no `/plugin install` step. Keep the clone where it is, since the links point at it. Use
-either this or the marketplace install, not both: both would load. To remove it, delete the two links.
+session, from where it is: no `/plugin install` step. Keep the clone where it is, since the link points at it. Use
+either this or the marketplace install, not both: both would load. To remove it, delete the link. A `tars-mod` link
+from before points at a folder that is gone: delete it with `rm ~/.claude/skills/tars-mod`.
 
 The hooks need `python3` on the PATH, in both tools. On Windows, a fresh install has only the Microsoft Store's
 `python3` shortcut, which prints "Python was not found" and runs nothing, so the hooks fail until Python is installed.
@@ -251,14 +250,14 @@ the skills started. The agent reads the STTP rules and the running skills from t
 turns with them, and reports what was wrong first; a fix that changes files or starts work waits for your go. Only you
 can call it, and it reads the skill files without asking, in that turn only.
 
-With the optional mod in `mods/tars-mod/` (Claude Code only), `/sttp-mode`, `/sttp-guards` and `/workshop-questions`
-answer at once, with no model turn. Without it, the hook answers and the model repeats its line.
+In Claude Code, TARS's mod (`hooks/tars-mod.js`) answers `/sttp-mode`, `/sttp-guards` and `/workshop-questions` at
+once, with no model turn. In Codex, the hook answers and the model repeats its line.
 
 The mod also pins a status line under the prompt: the STTP mode, or `paused`, and the pipeline `/workshop-forge` named in
 the session with its CURRENT row, else its NEXT one, else its first PLANNED or BLOCKED one, from the pipeline's status
-table, and how many of its iterations are done, such as `⚠ tars-mod: primary · csv → CSV → header row · CURRENT · 1/3`
-(the terminal draws `⚠ tars-mod:` before every mod's status line; the desktop app's status bar shows `tars-mod`). The count leaves out the iterations dropped, reverted, split or
-left for later. It follows each turn and each write under `.blueprints/`. To hide it, turn tars-mod's `Status line` off in `/config`;
+table, and how many of its iterations are done, such as `⚠ tars: primary · csv → CSV → header row · CURRENT · 1/3`
+(the terminal draws `⚠ tars:` before every mod's status line; the desktop app's status bar shows `tars`). The count leaves out the iterations dropped, reverted, split or
+left for later. It follows each turn and each write under `.blueprints/`. To hide it, turn tars's `Status line` off in `/config`;
 `/sttp-mode`, `/sttp-guards` and `/workshop-questions` still answer at once.
 
 `/workshop-forge` also opens a `Pipeline` pane: the pipeline it named, every iteration under its category, `✓` for DONE, `▶`
@@ -267,7 +266,7 @@ PLANNED, `⊘` for BLOCKED, and the iterations dropped, reverted,
 split or left for later dimmed with their status. It follows the same turns and writes as the status line. A session
 start or a plugin reload leaves it closed; `/workshop-forge-pane` opens it at any time, and closes it when it is open. In
 fullscreen from 110 columns the terminal docks it beside the chat; otherwise it sits above the prompt. To keep it
-closed, turn tars-mod's `Pipeline pane` off in `/config`; an open one closes, and `/workshop-forge-pane` says it is off.
+closed, turn tars's `Pipeline pane` off in `/config`; an open one closes, and `/workshop-forge-pane` says it is off.
 
 What the hooks do:
 
@@ -314,7 +313,8 @@ mcp/<name>/                     MCP server sources, if any are built here
 hooks/hooks.json                the hook entries, all calling hooks/sttp.py; the rules come in parts (see Controls)
 hooks/sttp.py                   the rules at session start and before the first edit, in parts; the prompt hook (reminder, pause, /sttp-mode, /sttp-guards, /workshop-questions, /tars-doctor, Codex's allow); the /workshop-craft, /workshop-forge and /workshop-glossary-bootstrap markers and the pipeline's state; the git guard; subagents; notes carried over when a session moves to the background (python3)
 tests/test_sttp_hooks.py        tests of hooks/sttp.py in both tools: the git guard, its switch and its default, the pipeline's state, compaction, a session moved to the background, the rule parts, the doctor: python3 -m unittest tests.test_sttp_hooks
-mods/tars-mod/                 the optional TARS mod, Claude Code only: answers /sttp-mode, /sttp-guards and /workshop-questions with no model turn, the status line and the pipeline pane with /workshop-forge-pane (each off in /config); tests: claude plugin test mods/tars-mod
+hooks/mod.json                  the mod's entry, named only in .claude-plugin/plugin.json, so Codex never reads it
+hooks/tars-mod.js               the TARS mod, Claude Code only: answers /sttp-mode, /sttp-guards and /workshop-questions with no model turn, the status line and the pipeline pane with /workshop-forge-pane (each off in /config); tests: claude plugin test .
 evals/<case>/prompt.md          benchmark cases for `claude plugin eval`
 evals/<case>/graders/*.md       regex and LLM graders for that case
 .claude-plugin/                 Claude Code plugin + marketplace manifests
@@ -400,9 +400,8 @@ open one, run the checks that cover your change:
 
 ```
 python3 -m unittest tests.test_sttp_hooks   # the hooks
-claude plugin test mods/tars-mod            # the mod
-claude plugin validate .                    # the plugin's manifests
-claude plugin validate mods/tars-mod        # the mod's manifest
+claude plugin test .                        # the mod
+claude plugin validate .                    # the plugin's manifests and the mod's entry
 ```
 
 CI runs the hook and mod tests on Linux, Windows and macOS for every pull request. A change to a skill's wording is

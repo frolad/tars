@@ -12,12 +12,9 @@
       "description": "The sttp rules and the workshop process.",
       "source": "./",
       "category": "productivity"
-    },
-    {
-      "name": "tars-mod",
-      "description": "Optional, Claude Code only: answers /sttp-mode, /sttp-guards and /workshop-questions with no model turn, pins STTP's status line under the prompt, and shows the /workshop-forge pipeline in a pane (/workshop-forge-pane).",
-      "source": "./mods/tars-mod",
-      "category": "productivity"
     }
-  ]
+  ],
+  "renames": {
+    "tars-mod": "tars"
+  }
 }

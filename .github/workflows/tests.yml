@@ -41,4 +41,4 @@ jobs:
         run: |
           & ([scriptblock]::Create((irm https://claude.ai/install.ps1))) latest
           "$HOME\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
-      - run: claude plugin test mods/tars-mod
+      - run: claude plugin test .

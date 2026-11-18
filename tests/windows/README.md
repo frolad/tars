@@ -21,8 +21,8 @@ stops it; the disk stays in the `tars-windows` volume.
 ssh -p 2222 Docker@127.0.0.1 powershell -NoProfile -ExecutionPolicy Bypass -File \\host.lan\Data\tests\windows\setup.ps1
 ```
 
-It installs Git, Python, Claude Code, Codex and the desktop app, copies the checkout to `C:\tars`, and installs TARS
-and the mod from there. Run it again after a change to the checkout: it copies the latest files. Codex keeps its own
+It installs Git, Python, Claude Code, Codex and the desktop app, copies the checkout to `C:\tars`, and installs TARS,
+with its mod, from there. Run it again after a change to the checkout: it copies the latest files. Codex keeps its own
 copy of the plugin; to give it the latest code, run `codex plugin remove tars@tars` and `codex plugin add tars@tars`
 in the VM, and trust the changed hooks at Codex's next start.
 
@@ -35,7 +35,7 @@ In the VM:
 ```powershell
 cd C:\tars
 python3 -m unittest tests.test_sttp_hooks
-claude plugin test mods\tars-mod
+claude plugin test .
 ```
 
 ## The live checks
@@ -75,7 +75,7 @@ continue". Then send:
    Codex's.
 
 The desktop app: in the Code view, pick "This computer" and the folder `C:\tarscheck`, and send
-`/workshop-forge demo csv`. The status bar reads `tars-mod primary · csv → CSV → totals · PLANNED · 2/4`, and a
+`/workshop-forge demo csv`. The status bar reads `tars primary · csv → CSV → totals · PLANNED · 2/4`, and a
 Pipeline pane shows the same rows as the terminal's. Stop the turn.
 
 ## Snags
